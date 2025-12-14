@@ -4,10 +4,10 @@
 
 ## 安装
 
-### 方式一：npm 全局安装（推荐）
+### 方式一：从 GitHub 安装（推荐）
 
 ```bash
-npm install -g iterative-workflow
+npm install -g kingoliang/claudecode-g3
 ```
 
 然后在目标项目中初始化：
