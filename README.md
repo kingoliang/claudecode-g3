@@ -2,6 +2,37 @@
 
 一个基于 Claude Code 的智能代码生成和质量保证框架，通过多个专业化 Agent 协作，实现代码的自动生成、审查和迭代改进。
 
+## 安装
+
+### 方式一：npm 全局安装（推荐）
+
+```bash
+npm install -g iterative-workflow
+```
+
+然后在目标项目中初始化：
+
+```bash
+cd /path/to/your-project
+iterative-workflow init
+```
+
+如需同时安装 OpenSpec 集成命令：
+
+```bash
+iterative-workflow init --with-openspec
+```
+
+### 方式二：手动安装
+
+克隆仓库并复制配置文件：
+
+```bash
+git clone https://github.com/kingoliang/claudecode-g3.git /tmp/iterative-workflow
+cp -r /tmp/iterative-workflow/.claude/* /path/to/your-project/.claude/
+rm -rf /tmp/iterative-workflow
+```
+
 ## 特性
 
 - **多 Agent 协作** - 5 个专业化 Agent 协同工作，覆盖代码生成和质量保证全流程
