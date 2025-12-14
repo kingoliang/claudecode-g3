@@ -6,8 +6,10 @@ Iterative multi-agent code generation framework for Claude Code. Automatically g
 
 - **Multi-Agent Collaboration** - 5 specialized agents working together for comprehensive code generation and quality assurance
 - **Automated Quality Checks** - Security, code quality, and performance reviews run in parallel
-- **Iterative Improvement** - Up to 5 automatic iteration cycles until code meets quality standards
-- **Tech Stack Management** - Automatic detection with caching via `/tech-stack` command
+- **Iterative Improvement** - Automatic iteration cycles until code meets quality standards
+- **Configurable Quality Thresholds** - Customize scoring thresholds and weights per project
+- **Tech Stack Awareness** - Automatic detection with caching, supports multi-language and monorepo projects
+- **Version Management** - Track installed version, easy upgrades with `iterative-workflow upgrade`
 - **OpenSpec Integration** - Seamless integration with OpenSpec specification management system
 - **Cross-Session Recovery** - Resume interrupted work from previous state
 
@@ -28,6 +30,19 @@ To include OpenSpec integration commands:
 
 ```bash
 iterative-workflow init --with-openspec
+```
+
+### CLI Commands
+
+```bash
+# Initialize in current project
+iterative-workflow init [--with-openspec]
+
+# Check installed version and updates
+iterative-workflow status
+
+# Upgrade to latest version
+iterative-workflow upgrade [--force]
 ```
 
 ## Architecture
@@ -74,7 +89,7 @@ User Requirement
 
 ## Quality Standards
 
-### Pass Thresholds
+### Default Pass Thresholds
 
 | Dimension | Requirement | Weight |
 |-----------|-------------|--------|
@@ -85,13 +100,58 @@ User Requirement
 | Performance Score | ≥ 80/100 | 25% |
 | Overall Score | ≥ 80/100 | - |
 
+### Configurable Thresholds
+
+Thresholds can be customized in `.claude/tech-stack.json`:
+
+```json
+{
+  "quality_thresholds": {
+    "security_min": 85,
+    "quality_min": 80,
+    "performance_min": 80,
+    "overall_min": 80,
+    "max_critical_issues": 0,
+    "max_high_issues": 2,
+    "max_iterations": 5,
+    "stall_threshold": 5,
+    "stall_rounds": 2
+  },
+  "weights": {
+    "security": 0.4,
+    "quality": 0.35,
+    "performance": 0.25
+  }
+}
+```
+
+**Preset Templates:**
+
+```json
+// Strict mode (financial/healthcare systems)
+"quality_thresholds": {
+  "security_min": 95,
+  "quality_min": 90,
+  "max_high_issues": 0,
+  "max_iterations": 10
+}
+
+// Relaxed mode (MVP/prototypes)
+"quality_thresholds": {
+  "security_min": 75,
+  "quality_min": 70,
+  "max_high_issues": 5,
+  "max_iterations": 3
+}
+```
+
 ### Scoring Formula
 
 ```
 Security Score = 100 - 25×(Critical) - 15×(High) - 5×(Medium) - 2×(Low)
 Quality Score = 100 - 10×(High) - 5×(Medium) - 2×(Low)
 Performance Score = 100 - 15×(High) - 8×(Medium) - 3×(Low)
-Overall Score = Security×0.4 + Quality×0.35 + Performance×0.25
+Overall Score = Security×weight + Quality×weight + Performance×weight
 ```
 
 ## Usage
@@ -111,6 +171,7 @@ The `/tech-stack` command manages project technology stack configuration:
 Tech stack is cached in `.claude/tech-stack.json`:
 ```json
 {
+  "version": "1.0.0",
   "detected_at": "2025-01-15T14:30:00Z",
   "source_files": ["package.json", "tsconfig.json"],
   "language": "TypeScript",
@@ -120,9 +181,39 @@ Tech stack is cached in `.claude/tech-stack.json`:
   "build_tool": "npm",
   "test_framework": "Jest",
   "code_style": "ESLint + Prettier",
-  "constraints": ["ESM", "React 18", "Node 18+"]
+  "constraints": ["ESM", "React 18", "Node 18+"],
+  "quality_thresholds": { ... },
+  "weights": { ... }
 }
 ```
+
+### Multi-Language / Monorepo Projects
+
+For projects with multiple languages or monorepo structures:
+
+```json
+{
+  "project_type": "multi-language",
+  "primary": {
+    "language": "TypeScript",
+    "framework": "Next.js",
+    "scope": "frontend/*"
+  },
+  "secondary": [
+    {
+      "language": "Java",
+      "framework": "Spring Boot",
+      "scope": "backend/*"
+    },
+    {
+      "language": "Python",
+      "scope": "scripts/*"
+    }
+  ]
+}
+```
+
+Supported monorepo tools: Turborepo, Nx, Lerna, pnpm workspaces, Rush
 
 ### Standalone Usage
 
@@ -156,13 +247,12 @@ iterative-workflow/
 │   └── cli.js              # CLI entry point
 ├── src/                    # TypeScript source code
 │   ├── commands/           # CLI commands
-│   │   └── init.ts         # Init command
+│   │   ├── init.ts         # Init command
+│   │   └── upgrade.ts      # Upgrade command
 │   ├── utils/              # Utility modules
-│   │   ├── tech-stack.ts   # Tech stack detection
-│   │   └── templates.ts    # Template management
+│   │   └── templates.ts    # Template & version management
 │   └── index.ts            # Main exports
 ├── test/                   # Test suite
-│   ├── tech-stack.test.ts  # Tech stack tests
 │   └── templates.test.ts   # Template tests
 ├── templates/              # Template files
 │   ├── agents/             # Agent definitions (5 agents)
