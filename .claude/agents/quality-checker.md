@@ -59,10 +59,29 @@ model: opus
 {
   "code": "待检查的代码",
   "files": ["file1.py", "file2.py"],
-  "language": "python",
-  "project_style": "PEP8 / Google Style / 自定义"
+  "tech_stack": {
+    "language": "Python",
+    "language_version": "3.11",
+    "framework": "FastAPI",
+    "framework_version": "0.100.0",
+    "code_style": "Black + isort + mypy",
+    "constraints": ["async/await", "Pydantic v2"]
+  },
+  "context": "代码用途说明"
 }
 ```
+
+**注意**: 根据 `tech_stack` 应用对应的质量检查规则：
+
+| 语言/框架 | 特定检查 |
+|-----------|----------|
+| Python | PEP8、类型注解、docstring 格式 |
+| Python/Django | Django 风格、模型命名、视图结构 |
+| Python/FastAPI | async/await 使用、Pydantic 模型 |
+| TypeScript | 严格类型、接口命名、模块导出 |
+| TypeScript/React | 组件命名、Hooks 规则、Props 类型 |
+| Java/Spring | Bean 命名、注解使用、包结构 |
+| JavaScript/Node | CommonJS vs ESM、回调风格 |
 
 ## 输出格式
 

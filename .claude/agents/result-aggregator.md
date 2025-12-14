@@ -19,6 +19,11 @@ model: opus
 ```json
 {
   "iteration": 1,
+  "tech_stack": {
+    "language": "Python",
+    "framework": "FastAPI",
+    "constraints": ["async/await", "Pydantic v2"]
+  },
   "security_result": {
     "passed": false,
     "score": 75,
@@ -37,6 +42,11 @@ model: opus
   "previous_scores": [65, 72]  // 可选：之前迭代的分数
 }
 ```
+
+**注意**: `tech_stack` 信息用于：
+1. 在反馈中包含技术栈相关的修复建议
+2. 根据语言/框架调整问题优先级
+3. 生成符合项目规范的代码改进指南
 
 ## 输出格式
 

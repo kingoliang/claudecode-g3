@@ -53,12 +53,33 @@ model: opus
 {
   "code": "待分析的代码",
   "files": ["file1.py", "file2.py"],
+  "tech_stack": {
+    "language": "Python",
+    "language_version": "3.11",
+    "framework": "FastAPI",
+    "framework_version": "0.100.0",
+    "orm": "SQLAlchemy 2.0",
+    "constraints": ["async/await", "PostgreSQL"]
+  },
   "context": {
     "expected_load": "预期负载 (如: 1000 QPS)",
     "data_size": "预期数据规模 (如: 100万条记录)"
   }
 }
 ```
+
+**注意**: 根据 `tech_stack` 应用对应的性能检查规则：
+
+| 语言/框架 | 特定检查 |
+|-----------|----------|
+| Python | GIL 限制、生成器使用、列表推导效率 |
+| Python/Django | QuerySet 评估、select_related/prefetch_related |
+| Python/FastAPI | async/await 正确性、Depends 缓存 |
+| Python/SQLAlchemy | Session 管理、eager loading、批量操作 |
+| TypeScript/Node | Event Loop 阻塞、Promise 并发 |
+| TypeScript/React | 渲染优化、memo/useMemo/useCallback |
+| Java/Spring | Bean 作用域、事务管理、连接池 |
+| Java/MyBatis | 批量操作、缓存配置、延迟加载 |
 
 ## 输出格式
 

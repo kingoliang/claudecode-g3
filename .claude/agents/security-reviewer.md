@@ -59,9 +59,24 @@ model: opus
 {
   "code": "待审查的代码",
   "files": ["file1.py", "file2.py"],
+  "tech_stack": {
+    "language": "Python",
+    "framework": "FastAPI",
+    "framework_version": "0.100.0"
+  },
   "context": "代码用途说明"
 }
 ```
+
+**注意**: 根据 `tech_stack` 应用对应的安全检查规则：
+
+| 语言/框架 | 特定检查 |
+|-----------|----------|
+| Python/Django | Django ORM 注入、CSRF token、模板转义 |
+| Python/FastAPI | Pydantic 验证、CORS 配置、OAuth2 |
+| Java/Spring | Spring Security、@PreAuthorize、JDBC |
+| JavaScript/Node | prototype pollution、eval()、child_process |
+| TypeScript/React | dangerouslySetInnerHTML、XSS、CSRF |
 
 ## 输出格式
 

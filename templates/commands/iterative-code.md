@@ -25,22 +25,47 @@ Task(subagent_type="performance-analyzer", prompt="...")
 Task(subagent_type="result-aggregator", prompt="...")
 ```
 
-### Rule 2: 迭代循环 (MUST)
+### Rule 2: 技术栈检测 (MUST - 在代码生成前执行)
+
+在调用 code-writer 之前，**必须**先检测项目技术栈：
+
+```
+# Step 0: 技术栈检测 (MUST)
+tech_stack = detect_tech_stack()
+
+检测内容:
+1. 检查 package.json / pom.xml / pyproject.toml / go.mod 等
+2. 识别语言、框架、版本
+3. 读取代码规范配置 (.eslintrc, pylintrc, checkstyle.xml 等)
+4. 生成技术栈报告
+
+如果无法检测，必须询问用户:
+- 主要编程语言及版本
+- 使用的框架
+- 代码规范要求
+```
+
+### Rule 3: 迭代循环 (MUST)
 
 ```
 iteration = 0
 feedback = ""
+tech_stack = detect_tech_stack()  # 必须先检测技术栈
 
 WHILE (NOT PASS AND iteration < 5):
     iteration++
 
-    # Step A: 你必须调用 code-writer
-    code = Task(subagent_type="code-writer", prompt="需求: $ARGUMENTS\n反馈: {feedback}")
+    # Step A: 你必须调用 code-writer，并传递技术栈信息
+    code = Task(subagent_type="code-writer", prompt="
+        需求: $ARGUMENTS
+        技术栈: {tech_stack}
+        反馈: {feedback}
+    ")
 
-    # Step B: 你必须在【单个消息】中【并行】调用 3 个 reviewer
-    security = Task(subagent_type="security-reviewer", ...)
-    quality = Task(subagent_type="quality-checker", ...)
-    performance = Task(subagent_type="performance-analyzer", ...)
+    # Step B: 你必须在【单个消息】中【并行】调用 3 个 reviewer，并传递技术栈
+    security = Task(subagent_type="security-reviewer", prompt="... 技术栈: {tech_stack}")
+    quality = Task(subagent_type="quality-checker", prompt="... 技术栈: {tech_stack}")
+    performance = Task(subagent_type="performance-analyzer", prompt="... 技术栈: {tech_stack}")
 
     # Step C: 你必须调用 result-aggregator
     result = Task(subagent_type="result-aggregator", prompt="汇总检查结果...")
@@ -51,12 +76,14 @@ WHILE (NOT PASS AND iteration < 5):
     IF result == "STALLED": 请求人工介入; BREAK
 ```
 
-### Rule 3: 禁止行为 (FORBIDDEN)
+### Rule 4: 禁止行为 (FORBIDDEN)
 
+- ❌ **禁止**: 不检测技术栈就开始生成代码
 - ❌ **禁止**: 直接编写代码而不调用 code-writer
 - ❌ **禁止**: 跳过 reviewer 检查
 - ❌ **禁止**: 不调用 result-aggregator 就判定通过
 - ❌ **禁止**: 逐个调用 reviewer (必须并行)
+- ❌ **禁止**: 生成与项目技术栈不兼容的代码
 
 ---
 
@@ -68,9 +95,17 @@ WHILE (NOT PASS AND iteration < 5):
 └─────────────────────────────────────────────────┘
                       ↓
 ┌─────────────────────────────────────────────────┐
+│ Step 0: 技术栈检测 (MUST)                        │
+│ - 检测 package.json / pom.xml / pyproject.toml  │
+│ - 识别语言、框架、版本                           │
+│ - 读取代码规范配置                               │
+│ - 无法检测时询问用户                             │
+└─────────────────────────────────────────────────┘
+                      ↓
+┌─────────────────────────────────────────────────┐
 │ Step 1: code-writer 编写初始代码                 │
-│ - 理解需求                                       │
-│ - 生成代码实现                                   │
+│ - 理解需求 + 技术栈约束                          │
+│ - 生成符合项目规范的代码                         │
 └─────────────────────────────────────────────────┘
                       ↓
 ┌─────────────────────────────────────────────────┐
@@ -98,11 +133,45 @@ WHILE (NOT PASS AND iteration < 5):
 
 ## 执行步骤
 
+### 0. 技术栈检测 (MUST - 最先执行)
+
+在生成任何代码之前，检测项目技术栈：
+
+**检测文件:**
+| 文件 | 语言/框架 |
+|------|----------|
+| `package.json` | JavaScript/TypeScript, Node.js |
+| `pom.xml` | Java (Maven) |
+| `build.gradle` | Java/Kotlin (Gradle) |
+| `pyproject.toml` / `requirements.txt` | Python |
+| `go.mod` | Go |
+| `Cargo.toml` | Rust |
+
+**输出技术栈报告:**
+```json
+{
+  "language": "TypeScript",
+  "framework": "Next.js@14.0.0",
+  "build_tool": "npm",
+  "test_framework": "Jest",
+  "code_style": "ESLint + Prettier",
+  "constraints": ["ESM", "React 18", "Node 18+"]
+}
+```
+
+**如果无法检测，询问用户:**
+```
+无法自动检测项目技术栈。请提供：
+1. 主要编程语言及版本
+2. 使用的框架
+3. 代码规范要求
+```
+
 ### 1. 初始代码生成
 
 使用 `code-writer` Agent:
-- 输入: 用户需求 "$ARGUMENTS"
-- 输出: 初始代码实现
+- 输入: 用户需求 "$ARGUMENTS" + **技术栈信息**
+- 输出: 符合项目规范的代码实现
 
 ### 2. 并行质量检查
 

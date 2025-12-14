@@ -19,17 +19,30 @@ model: opus
 ```json
 {
   "requirement": "用户需求描述",
-  "target_files": ["file1.py", "file2.py"],
+  "tech_stack": {
+    "language": "TypeScript",
+    "language_version": "5.0",
+    "framework": "Next.js",
+    "framework_version": "14.0.0",
+    "build_tool": "npm",
+    "test_framework": "Jest",
+    "code_style": "ESLint + Prettier",
+    "constraints": ["ESM modules", "React 18", "Node 18+"]
+  },
+  "target_files": ["file1.ts", "file2.ts"],
   "project_context": "项目背景信息",
   "spec": "来自 spec.md 的需求规范 (可选)",
   "design": "来自 design.md 的技术设计 (可选)"
 }
 ```
 
+**注意**: `tech_stack` 是**必需字段**，必须在代码生成前检测项目技术栈。
+
 ### 迭代调用
 ```json
 {
   "previous_code": "上一轮生成的代码",
+  "tech_stack": { ... },
   "feedback": "来自 result-aggregator 的反馈",
   "issues": [
     {
@@ -78,6 +91,36 @@ model: opus
 - 添加必要的注释（仅在逻辑不明显时）
 - 保持代码简洁，不过度设计
 
+### 4. 技术栈约束 (MUST)
+
+**必须严格遵循 `tech_stack` 中的约束：**
+
+1. **语言版本**
+   - 只使用指定版本支持的语法特性
+   - 例如：如果是 Python 3.8，不使用 walrus operator `:=`
+   - 例如：如果是 Java 11，不使用 record 类型
+
+2. **框架规范**
+   - 使用框架推荐的模式和最佳实践
+   - 遵循框架的目录结构约定
+   - 例如：Next.js 14 使用 App Router 而非 Pages Router
+
+3. **依赖管理**
+   - **不引入新依赖**，除非绝对必要
+   - 优先使用项目已有的库
+   - 如果需要新依赖，必须在输出中说明
+
+4. **代码风格**
+   - 遵循项目配置的 linter 规则 (ESLint, Pylint, Checkstyle 等)
+   - 遵循项目配置的 formatter 规则 (Prettier, Black 等)
+   - 与项目现有代码风格保持一致
+
+5. **模块系统**
+   - 使用项目指定的模块系统 (ESM vs CommonJS, etc.)
+   - 遵循项目的导入/导出约定
+
+**违反技术栈约束视为质量问题！**
+
 ## 迭代改进规则
 
 1. **优先级处理**
@@ -116,6 +159,16 @@ model: opus
 ```json
 {
   "requirement": "实现用户登录 API，支持邮箱密码登录",
+  "tech_stack": {
+    "language": "Python",
+    "language_version": "3.11",
+    "framework": "FastAPI",
+    "framework_version": "0.100.0",
+    "build_tool": "pip",
+    "test_framework": "pytest",
+    "code_style": "Black + isort + mypy",
+    "constraints": ["async/await", "Pydantic v2", "SQLAlchemy 2.0"]
+  },
   "target_files": ["src/controllers/auth.py", "src/services/auth.py"],
   "spec": "用户输入邮箱密码 -> 验证 -> 返回 JWT token"
 }
