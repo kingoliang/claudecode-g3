@@ -87,11 +87,20 @@
 
 ### 与 OpenSpec 集成
 
+需要先初始化 OpenSpec 系统：
+
 ```bash
+# 1. 初始化 OpenSpec（安装基础命令）
+openspec init
+
+# 2. 创建变更提案
+/openspec:proposal "实现用户认证功能"
+
+# 3. 使用迭代式实现（本项目提供的增强功能）
 /os-apply-iterative [change-id]
 ```
 
-基于 OpenSpec 变更规范进行迭代式实现，支持跨会话恢复。
+`/os-apply-iterative` 是对标准 `/openspec:apply` 的增强，增加了多 Agent 质量保证循环。
 
 **示例：**
 ```bash
@@ -140,15 +149,13 @@
 │   └── result-aggregator.md   # 结果聚合 Agent
 ├── commands/                  # 自定义命令
 │   ├── iterative-code.md      # 独立迭代命令
-│   ├── os-apply-iterative.md  # OpenSpec 集成命令
-│   └── openspec/              # OpenSpec 相关命令
-│       ├── proposal.md
-│       ├── apply.md
-│       └── archive.md
+│   └── os-apply-iterative.md  # OpenSpec 集成命令
 └── skills/                    # 技能定义
     └── iterative-workflow/
         └── SKILL.md           # 迭代工作流技能
 ```
+
+> **注意**: OpenSpec 基础命令（`/openspec:proposal`, `/openspec:apply`, `/openspec:archive`）由 OpenSpec 系统通过 `openspec init` 提供，不包含在本项目中。
 
 ## 工作流程详解
 
