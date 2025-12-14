@@ -1,6 +1,7 @@
 ---
 name: performance-analyzer
 description: 性能分析专家。分析算法复杂度、内存使用、数据库查询效率、潜在瓶颈。用于迭代式代码审查。
+version: 1.0.0
 tools: Read, Grep, Glob, Bash
 model: opus
 ---

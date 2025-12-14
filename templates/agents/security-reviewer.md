@@ -1,6 +1,7 @@
 ---
 name: security-reviewer
 description: 安全漏洞检测专家。检查 OWASP Top 10、认证授权、数据保护、敏感信息泄露。用于迭代式代码审查。
+version: 1.0.0
 tools: Read, Grep, Glob
 model: opus
 ---

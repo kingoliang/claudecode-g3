@@ -1,6 +1,7 @@
 ---
 name: quality-checker
 description: 代码质量检查专家。检查代码规范、可维护性、设计模式、命名规范。用于迭代式代码审查。
+version: 1.0.0
 tools: Read, Grep, Glob
 model: opus
 ---

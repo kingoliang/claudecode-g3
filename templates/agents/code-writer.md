@@ -1,6 +1,7 @@
 ---
 name: code-writer
 description: 代码编写专家。根据需求编写代码，接收反馈后迭代改进。用于迭代式代码生成的核心 Agent。
+version: 1.0.0
 tools: Read, Edit, Write, Grep, Glob, Bash
 model: opus
 ---
@@ -120,6 +121,50 @@ model: opus
    - 遵循项目的导入/导出约定
 
 **违反技术栈约束视为质量问题！**
+
+### 5. 多语言/Monorepo 项目处理
+
+当 `tech_stack.project_type` 为 `multi-language` 或 `monorepo` 时：
+
+1. **确定适用的技术栈**
+   ```python
+   def get_applicable_tech_stack(file_path, tech_stack):
+       if tech_stack.get("project_type") == "monorepo":
+           # Monorepo: 根据 workspace 匹配
+           for pkg_path, pkg_config in tech_stack["workspace_config"]["packages"].items():
+               if file_path.startswith(pkg_path):
+                   return {**tech_stack["workspace_config"]["root"], **pkg_config}
+           return tech_stack["workspace_config"]["root"]
+
+       elif tech_stack.get("project_type") == "multi-language":
+           # 多语言: 根据 scope 匹配
+           for secondary in tech_stack.get("secondary", []):
+               if matches_scope(file_path, secondary.get("scope", "")):
+                   return secondary
+           return tech_stack.get("primary", tech_stack)
+
+       # 单语言项目
+       return tech_stack
+   ```
+
+2. **跨语言代码生成**
+   - 为每个修改的文件使用对应的技术栈配置
+   - 接口定义需考虑跨语言兼容性
+   - API 通信使用标准格式（JSON、Protocol Buffers）
+
+3. **输出格式扩展**
+   ```json
+   {
+     "code": "...",
+     "files_modified": ["frontend/src/api.ts", "backend/src/Controller.java"],
+     "tech_stacks_used": {
+       "frontend/src/api.ts": "TypeScript (Next.js)",
+       "backend/src/Controller.java": "Java (Spring Boot)"
+     },
+     "changes_made": [...],
+     "cross_language_notes": "API 接口保持 JSON 格式兼容"
+   }
+   ```
 
 ## 迭代改进规则
 

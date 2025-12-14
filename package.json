@@ -1,18 +1,28 @@
 {
   "name": "iterative-workflow",
   "version": "1.0.0",
-  "description": "迭代式多 Agent 代码生成框架 - 通过多个专业化 Agent 协作实现代码的自动生成、审查和迭代改进",
-  "main": "src/index.js",
+  "description": "Iterative multi-agent code generation framework for Claude Code",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "bin": {
     "iterative-workflow": "./bin/cli.js"
   },
   "files": [
     "bin",
-    "src",
+    "dist",
     "templates"
   ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src --ext .ts",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "prepublishOnly": "npm run clean && npm run build"
   },
   "keywords": [
     "claude-code",
@@ -28,12 +38,23 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "chalk": "^4.1.2",
-    "commander": "^11.1.0",
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
     "fs-extra": "^11.2.0"
   },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.6.0",
+    "@vitest/coverage-v8": "^1.6.0",
+    "eslint": "^8.55.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "prettier": "^3.1.0"
+  },
   "engines": {
-    "node": ">=14.0.0"
+    "node": ">=20.0.0"
   },
   "repository": {
     "type": "git",

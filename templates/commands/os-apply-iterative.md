@@ -25,47 +25,22 @@ argument-hint: [change-id]
 结果聚合:    Task(subagent_type="result-aggregator", prompt="...")
 ```
 
-### Rule 2: 技术栈检测 (MUST - 在代码生成前执行)
+### Rule 2: 技术栈加载 (MUST - 在代码生成前执行)
 
-在调用 code-writer 之前，**必须**先检测项目技术栈：
+在调用 code-writer 之前，**必须**先加载项目技术栈。
 
 ```
-# Step 0: 技术栈检测 (MUST)
-tech_stack = detect_tech_stack()
+# Step 0: 技术栈加载 (MUST)
+IF .claude/tech-stack.json 不存在:
+    调用 /tech-stack 命令生成
 
-检测内容:
-1. 检查 package.json / pom.xml / pyproject.toml / go.mod 等
-2. 识别语言、框架、版本
-3. 读取代码规范配置 (.eslintrc, pylintrc, checkstyle.xml 等)
-4. 生成技术栈报告
-
-如果无法检测，必须询问用户:
-- 主要编程语言及版本
-- 使用的框架
-- 代码规范要求
+tech_stack = 读取 .claude/tech-stack.json
 ```
 
-**检测文件:**
-| 文件 | 语言/框架 |
-|------|----------|
-| `package.json` | JavaScript/TypeScript, Node.js |
-| `pom.xml` | Java (Maven) |
-| `build.gradle` | Java/Kotlin (Gradle) |
-| `pyproject.toml` / `requirements.txt` | Python |
-| `go.mod` | Go |
-| `Cargo.toml` | Rust |
-
-**输出技术栈报告:**
-```json
-{
-  "language": "TypeScript",
-  "framework": "Next.js@14.0.0",
-  "build_tool": "npm",
-  "test_framework": "Jest",
-  "code_style": "ESLint + Prettier",
-  "constraints": ["ESM", "React 18", "Node 18+"]
-}
-```
+**说明**:
+- `/tech-stack` 命令负责检测项目配置并生成 `.claude/tech-stack.json`
+- 如果文件已存在，直接读取使用（不重复检测）
+- 需要重新检测时，运行 `/tech-stack --refresh`
 
 ### Rule 3: 迭代循环 (MUST)
 
@@ -74,7 +49,7 @@ tech_stack = detect_tech_stack()
 ```
 iteration = 0
 feedback = ""
-tech_stack = detect_tech_stack()  # 必须先检测技术栈
+# tech_stack 已在 Step 0 通过 /tech-stack 命令加载
 
 WHILE (NOT PASS AND iteration < 5):
     iteration++
@@ -113,13 +88,14 @@ WHILE (NOT PASS AND iteration < 5):
 
 ### Rule 4: 禁止行为 (FORBIDDEN)
 
-- ❌ **禁止**: 不检测技术栈就开始生成代码
+- ❌ **禁止**: 不加载技术栈就开始生成代码
 - ❌ **禁止**: 直接编写代码而不调用 code-writer agent
 - ❌ **禁止**: 跳过任何 reviewer agent 的检查
 - ❌ **禁止**: 不调用 result-aggregator 就判定是否通过
 - ❌ **禁止**: 逐个调用 reviewer agents (必须并行，单个消息 3 个 Task)
 - ❌ **禁止**: 修改代码后不重新运行检查流程
 - ❌ **禁止**: 生成与项目技术栈不兼容的代码
+- ❌ **禁止**: 每次迭代都重新检测技术栈（应使用 .claude/tech-stack.json 缓存）
 
 ### Rule 5: context.md 生成 (MUST)
 
@@ -174,11 +150,10 @@ WHILE (NOT PASS AND iteration < 5):
 └─────────────────────────────────────────────────────────────┘
                            ↓
 ┌─────────────────────────────────────────────────────────────┐
-│  Step 3: 技术栈检测 (MUST)                                   │
-│  - 检测 package.json / pom.xml / pyproject.toml 等          │
-│  - 识别语言、框架、版本                                      │
-│  - 读取代码规范配置                                          │
-│  - 无法检测时询问用户                                        │
+│  Step 3: 技术栈加载 (MUST)                                   │
+│  - 检查 .claude/tech-stack.json 是否存在                     │
+│  - 存在 → 直接读取使用                                       │
+│  - 不存在 → 调用 /tech-stack 命令生成                        │
 └─────────────────────────────────────────────────────────────┘
                            ↓
             ╔═══════════════════════════════════╗
@@ -246,48 +221,22 @@ openspec/changes/$ARGUMENTS/specs/*/spec.md  # 需求规范
    - 需要处理的技术债务
    - 需要人工介入的问题
 
-### Step 3: 技术栈检测 (MUST)
+### Step 3: 技术栈加载 (MUST)
 
-在生成任何代码之前，检测项目技术栈：
+在生成任何代码之前，加载项目技术栈：
 
-**检测文件:**
-| 文件 | 语言/框架 |
-|------|----------|
-| `package.json` | JavaScript/TypeScript, Node.js |
-| `pom.xml` | Java (Maven) |
-| `build.gradle` | Java/Kotlin (Gradle) |
-| `pyproject.toml` / `requirements.txt` | Python |
-| `go.mod` | Go |
-| `Cargo.toml` | Rust |
+```
+IF .claude/tech-stack.json 不存在:
+    调用 /tech-stack 命令生成
 
-**检测内容:**
-1. 主要语言及版本
-2. 使用的框架及版本
-3. 构建工具和测试框架
-4. 代码规范配置 (ESLint, Pylint, Checkstyle 等)
-5. 模块系统 (ESM vs CommonJS 等)
-
-**输出技术栈报告:**
-```json
-{
-  "language": "TypeScript",
-  "language_version": "5.0",
-  "framework": "Next.js",
-  "framework_version": "14.0.0",
-  "build_tool": "npm",
-  "test_framework": "Jest",
-  "code_style": "ESLint + Prettier",
-  "constraints": ["ESM", "React 18", "Node 18+"]
-}
+tech_stack = 读取 .claude/tech-stack.json
 ```
 
-**如果无法检测，询问用户:**
-```
-无法自动检测项目技术栈。请提供：
-1. 主要编程语言及版本
-2. 使用的框架
-3. 代码规范要求
-```
+**说明**:
+- `/tech-stack` 命令负责检测项目配置并生成 `.claude/tech-stack.json`
+- 如果文件已存在，直接读取使用（不重复检测）
+- 需要重新检测时，运行 `/tech-stack --refresh`
+- 详细的检测逻辑和文件格式见 `/tech-stack` 命令文档
 
 ### Step 4: 对每个任务执行迭代式协作
 
