@@ -1,6 +1,7 @@
 ---
 description: OpenSpec 驱动的迭代式代码实现，结合规范管理和质量保证，支持跨会话恢复
 argument-hint: [change-id]
+optional: true
 ---
 
 # OpenSpec 迭代式实现

@@ -1,32 +1,40 @@
 import chalk from 'chalk';
-import { copyTemplates } from '../utils/templates.js';
+import { copyTemplates, type TemplateDiscoveryResult } from '../utils/templates.js';
+import { formatAgentNames } from '../utils/agent-discovery.js';
+import { formatCommandNames } from '../utils/command-discovery.js';
+import { formatSkillNames } from '../utils/skill-discovery.js';
 
 export interface InitOptions {
   withOpenspec?: boolean;
+  /** Target directory for initialization (defaults to cwd) */
+  targetDir?: string;
 }
 
 /**
- * Initialize the iterative-workflow framework in the current project
+ * Initialize the iterative-workflow framework in the specified project
+ * @param options - Initialization options including target directory
  */
 export async function init(options: InitOptions = {}): Promise<void> {
-  const targetDir = process.cwd();
+  const targetDir = options.targetDir ?? process.cwd();
 
   console.log(chalk.blue('Initializing iterative code generation framework...'));
   console.log('');
 
   try {
-    await copyTemplates(targetDir, options);
+    const result: TemplateDiscoveryResult = await copyTemplates(targetDir, options);
+    const agentCount = result.agents.agents.length;
+    const agentNames = formatAgentNames(result.agents.agents);
+    const commandNames = formatCommandNames(result.commands.commands);
+    const skillCount = result.skills.skills.length;
+    const skillNames = formatSkillNames(result.skills.skills);
 
     console.log('');
     console.log(chalk.green('Initialization complete!'));
     console.log('');
     console.log('Installed components:');
-    console.log(chalk.cyan('  - 5 specialized agents (code-writer, security-reviewer, quality-checker, performance-analyzer, result-aggregator)'));
-    console.log(chalk.cyan('  - /iterative-code command'));
-    if (options.withOpenspec) {
-      console.log(chalk.cyan('  - /os-apply-iterative command (OpenSpec integration)'));
-    }
-    console.log(chalk.cyan('  - iterative-workflow skill'));
+    console.log(chalk.cyan(`  - ${agentCount} specialized agents (${agentNames})`));
+    console.log(chalk.cyan(`  - Commands: ${commandNames}`));
+    console.log(chalk.cyan(`  - ${skillCount} skill${skillCount !== 1 ? 's' : ''} (${skillNames})`));
     console.log('');
     console.log('Usage:');
     console.log(chalk.yellow('  /iterative-code [requirement description]'));
@@ -40,6 +48,20 @@ export async function init(options: InitOptions = {}): Promise<void> {
       console.log(chalk.yellow('  /os-apply-iterative [change-id]'));
       console.log('');
       console.log('Note: Run openspec init first to initialize the OpenSpec system');
+      console.log('');
+    }
+
+    // Report any discovery errors
+    const allErrors = [
+      ...result.agents.errors,
+      ...result.commands.errors,
+      ...result.skills.errors,
+    ];
+    if (allErrors.length > 0) {
+      console.log(chalk.yellow('Warnings:'));
+      for (const err of allErrors) {
+        console.log(chalk.yellow(`  - ${err.file}: ${err.error}`));
+      }
       console.log('');
     }
 
