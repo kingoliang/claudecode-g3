@@ -9,9 +9,11 @@ Iterative multi-agent code generation framework for Claude Code. Automatically g
 - **Iterative Improvement** - Automatic iteration cycles until code meets quality standards
 - **Configurable Quality Thresholds** - Customize scoring thresholds and weights per project
 - **Tech Stack Awareness** - Automatic detection with caching, supports multi-language and monorepo projects
-- **Version Management** - Track installed version, easy upgrades with `iterative-workflow upgrade`
+- **Version Management** - Semantic versioning with `iterative-workflow status` and `upgrade` commands
+- **Cross-Platform Support** - Works on macOS, Linux, and Windows
 - **OpenSpec Integration** - Seamless integration with OpenSpec specification management system
 - **Cross-Session Recovery** - Resume interrupted work from previous state
+- **Dynamic Discovery** - Agents, commands, and skills are auto-discovered from templates
 
 ## Installation
 
@@ -247,28 +249,36 @@ iterative-workflow/
 │   └── cli.js              # CLI entry point
 ├── src/                    # TypeScript source code
 │   ├── commands/           # CLI commands
-│   │   ├── init.ts         # Init command
-│   │   └── upgrade.ts      # Upgrade command
+│   │   ├── init.ts         # Initialize framework
+│   │   ├── upgrade.ts      # Upgrade templates
+│   │   └── status.ts       # Show version info
 │   ├── utils/              # Utility modules
-│   │   └── templates.ts    # Template & version management
-│   └── index.ts            # Main exports
-├── test/                   # Test suite
-│   └── templates.test.ts   # Template tests
-├── templates/              # Template files
+│   │   ├── templates.ts    # Template & version management
+│   │   ├── agent-discovery.ts    # Agent metadata parsing
+│   │   ├── command-discovery.ts  # Command metadata parsing
+│   │   ├── skill-discovery.ts    # Skill metadata parsing
+│   │   ├── yaml-parser.ts        # YAML frontmatter parser
+│   │   └── version.ts            # Version constant
+│   └── index.ts            # Public API exports
+├── test/                   # Test suite (Vitest)
+│   ├── templates.test.ts
+│   ├── agent-discovery.test.ts
+│   └── command-discovery.test.ts
+├── templates/              # Template files (auto-discovered)
 │   ├── agents/             # Agent definitions (5 agents)
 │   │   ├── code-writer.md
 │   │   ├── security-reviewer.md
 │   │   ├── quality-checker.md
 │   │   ├── performance-analyzer.md
 │   │   └── result-aggregator.md
-│   ├── commands/           # Command templates (3 commands)
+│   ├── commands/           # Command templates
 │   │   ├── tech-stack.md       # Tech stack management
 │   │   ├── iterative-code.md   # Standalone iterative code gen
-│   │   └── os-apply-iterative.md  # OpenSpec integration
+│   │   └── os-apply-iterative.md  # OpenSpec integration (optional)
 │   └── skills/             # Skill definitions
 │       └── iterative-workflow/
 ├── scripts/                # Build scripts
-├── .github/                # GitHub workflows
+│   └── inject-version.js   # Version injection at build time
 ├── package.json            # Package configuration
 ├── tsconfig.json           # TypeScript configuration
 └── vitest.config.ts        # Test configuration
@@ -323,12 +333,62 @@ npm run format
 - I/O bottlenecks
 - Caching opportunities
 
+## API
+
+The package exports utilities for programmatic use:
+
+```typescript
+import {
+  // Commands
+  init,
+  upgrade,
+  status,
+
+  // Template management
+  copyTemplates,
+  checkUpgrade,
+  getInstalledVersion,
+  FRAMEWORK_VERSION,
+
+  // Discovery utilities
+  discoverAgents,
+  discoverCommands,
+  discoverSkills,
+
+  // Types
+  type AgentMetadata,
+  type CommandMetadata,
+  type SkillMetadata,
+  type UpgradeStatus,
+} from 'iterative-workflow';
+
+// Example: Check if upgrade is available
+const result = await checkUpgrade('/path/to/project');
+if (result.needsUpgrade) {
+  console.log(`Upgrade available: ${result.currentVersion} → ${result.availableVersion}`);
+  console.log(`Status: ${result.status}`); // 'needs_upgrade' | 'up_to_date' | 'newer_installed'
+}
+
+// Example: Initialize with custom target directory
+await init({ targetDir: '/path/to/project', withOpenspec: true });
+```
+
 ## Requirements
 
 - Node.js >= 20.0.0
 - Claude Code CLI
 - Claude Opus model access
 - (Optional) OpenSpec system
+
+## Changelog
+
+### v1.0.0
+- Initial release with multi-agent code generation
+- Semantic version comparison using semver
+- Cross-platform support (macOS, Linux, Windows)
+- Dynamic discovery for agents, commands, and skills
+- Improved YAML parser with edge case handling
+- Dependency injection support for testability
 
 ## License
 
