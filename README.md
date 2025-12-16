@@ -1,4 +1,4 @@
-# Iterative Workflow
+# Helix
 
 Iterative multi-agent code generation framework for Claude Code. Automatically generates, reviews, and improves code through specialized AI agents working in collaboration.
 
@@ -9,42 +9,45 @@ Iterative multi-agent code generation framework for Claude Code. Automatically g
 - **Iterative Improvement** - Automatic iteration cycles until code meets quality standards
 - **Configurable Quality Thresholds** - Customize scoring thresholds and weights per project
 - **Tech Stack Awareness** - Automatic detection with caching, supports multi-language and monorepo projects
-- **Version Management** - Semantic versioning with `iterative-workflow status` and `upgrade` commands
+- **Version Management** - Semantic versioning with `helix status` and `upgrade` commands
 - **Cross-Platform Support** - Works on macOS, Linux, and Windows
-- **OpenSpec Integration** - Seamless integration with OpenSpec specification management system
+- **OpenSpec Integration** - Enabled by default, seamless integration with OpenSpec specification management
 - **Cross-Session Recovery** - Resume interrupted work from previous state
 - **Dynamic Discovery** - Agents, commands, and skills are auto-discovered from templates
+- **Type-Safe Schemas** - Zod-based validation for all agent communication
+- **Observability** - Built-in tracing, structured logging, and metrics collection
+- **Error Recovery** - Retry with backoff, fallback strategies, and circuit breaker patterns
 
 ## Installation
 
 ```bash
-npm install -g iterative-workflow
+npm install -g helix
 ```
 
 Then initialize in your project:
 
 ```bash
 cd /path/to/your-project
-iterative-workflow init
+helix init
 ```
 
-To include OpenSpec integration commands:
+OpenSpec integration is enabled by default. To disable it:
 
 ```bash
-iterative-workflow init --with-openspec
+helix init --no-openspec
 ```
 
 ### CLI Commands
 
 ```bash
-# Initialize in current project
-iterative-workflow init [--with-openspec]
+# Initialize in current project (OpenSpec enabled by default)
+helix init [--no-openspec]
 
 # Check installed version and updates
-iterative-workflow status
+helix status
 
 # Upgrade to latest version
-iterative-workflow upgrade [--force]
+helix upgrade [--force]
 ```
 
 ## Architecture
@@ -244,7 +247,7 @@ openspec init
 ## Project Structure
 
 ```
-iterative-workflow/
+helix/
 ├── bin/                    # CLI executables
 │   └── cli.js              # CLI entry point
 ├── src/                    # TypeScript source code
@@ -252,15 +255,31 @@ iterative-workflow/
 │   │   ├── init.ts         # Initialize framework
 │   │   ├── upgrade.ts      # Upgrade templates
 │   │   └── status.ts       # Show version info
+│   ├── schemas/            # Zod schema definitions
+│   │   └── index.ts        # Type-safe agent communication schemas
+│   ├── observability/      # Observability infrastructure
+│   │   ├── tracer.ts       # Distributed tracing
+│   │   ├── logger.ts       # Structured logging
+│   │   └── metrics.ts      # Metrics collection
 │   ├── utils/              # Utility modules
 │   │   ├── templates.ts    # Template & version management
-│   │   ├── agent-discovery.ts    # Agent metadata parsing
-│   │   ├── command-discovery.ts  # Command metadata parsing
-│   │   ├── skill-discovery.ts    # Skill metadata parsing
-│   │   ├── yaml-parser.ts        # YAML frontmatter parser
-│   │   └── version.ts            # Version constant
+│   │   ├── validation.ts   # Schema validation utilities
+│   │   ├── aggregator-validator.ts  # Output sanity checking
+│   │   ├── error-recovery.ts        # Retry, fallback, circuit breaker
+│   │   ├── checkpoint.ts            # State persistence
+│   │   ├── agent-discovery.ts       # Agent metadata parsing
+│   │   ├── command-discovery.ts     # Command metadata parsing
+│   │   ├── skill-discovery.ts       # Skill metadata parsing
+│   │   ├── yaml-parser.ts           # YAML frontmatter parser
+│   │   └── version.ts               # Version constant
 │   └── index.ts            # Public API exports
 ├── test/                   # Test suite (Vitest)
+│   ├── schemas.test.ts
+│   ├── validation.test.ts
+│   ├── observability.test.ts
+│   ├── aggregator-validator.test.ts
+│   ├── error-recovery.test.ts
+│   ├── checkpoint.test.ts
 │   ├── templates.test.ts
 │   ├── agent-discovery.test.ts
 │   └── command-discovery.test.ts
@@ -274,9 +293,9 @@ iterative-workflow/
 │   ├── commands/           # Command templates
 │   │   ├── tech-stack.md       # Tech stack management
 │   │   ├── iterative-code.md   # Standalone iterative code gen
-│   │   └── os-apply-iterative.md  # OpenSpec integration (optional)
+│   │   └── os-apply-iterative.md  # OpenSpec integration
 │   └── skills/             # Skill definitions
-│       └── iterative-workflow/
+│       └── helix/
 ├── scripts/                # Build scripts
 │   └── inject-version.js   # Version injection at build time
 ├── package.json            # Package configuration
@@ -355,12 +374,32 @@ import {
   discoverCommands,
   discoverSkills,
 
+  // Schemas & Validation
+  AggregatorOutputSchema,
+  CodeWriterInputSchema,
+  safeValidate,
+  parseAndValidate,
+
+  // Observability
+  createTracer,
+  createLogger,
+  createMetricsCollector,
+
+  // Error Recovery
+  withRetry,
+  withFallback,
+  withTimeout,
+  CircuitBreaker,
+
   // Types
   type AgentMetadata,
   type CommandMetadata,
   type SkillMetadata,
   type UpgradeStatus,
-} from 'iterative-workflow';
+  type AggregatorOutput,
+  type Weights,
+  type QualityThresholds,
+} from 'helix';
 
 // Example: Check if upgrade is available
 const result = await checkUpgrade('/path/to/project');
@@ -370,7 +409,7 @@ if (result.needsUpgrade) {
 }
 
 // Example: Initialize with custom target directory
-await init({ targetDir: '/path/to/project', withOpenspec: true });
+await init({ targetDir: '/path/to/project' }); // OpenSpec enabled by default
 ```
 
 ## Requirements
@@ -389,6 +428,13 @@ await init({ targetDir: '/path/to/project', withOpenspec: true });
 - Dynamic discovery for agents, commands, and skills
 - Improved YAML parser with edge case handling
 - Dependency injection support for testability
+- **Type-safe schemas** with Zod validation
+- **Observability infrastructure** (tracer, logger, metrics)
+- **Smart iteration strategy** with selective re-checking
+- **Enhanced stall detection** (issue fingerprint, oscillation, regression)
+- **Reliability features** (aggregator validator, error recovery, checkpoints)
+- **OpenSpec integration enabled by default**
+- Renamed to **Helix**
 
 ## License
 
