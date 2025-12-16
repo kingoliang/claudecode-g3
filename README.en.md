@@ -20,11 +20,17 @@ Iterative multi-agent code generation framework for Claude Code. Automatically g
 
 ## Installation
 
+### Install from GitHub
+
 ```bash
-npm install -g helix
+# Install directly from GitHub repository
+npm install -g github:kingoliang/claudecode-g3
+
+# Or use full URL
+npm install -g git+https://github.com/kingoliang/claudecode-g3.git
 ```
 
-Then initialize in your project:
+### Initialize in your project
 
 ```bash
 cd /path/to/your-project

@@ -31,11 +31,17 @@
 
 ## 安装
 
+### 从 GitHub 安装
+
 ```bash
-npm install -g helix
+# 直接从 GitHub 仓库安装
+npm install -g github:kingoliang/claudecode-g3
+
+# 或使用完整 URL
+npm install -g git+https://github.com/kingoliang/claudecode-g3.git
 ```
 
-然后在项目中初始化：
+### 在项目中初始化
 
 ```bash
 cd /path/to/your-project
