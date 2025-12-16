@@ -1,5 +1,5 @@
 {
-  "name": "iterative-workflow",
+  "name": "helix",
   "version": "1.0.0",
   "description": "Iterative multi-agent code generation framework for Claude Code",
   "type": "module",
