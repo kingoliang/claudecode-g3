@@ -344,6 +344,154 @@ def get_stall_warning(current_score, previous_scores, tech_stack):
 | `FAIL_MAX_ITERATIONS` | 达到最大迭代次数，未能达标 |
 | `STALLED` | 进度停滞，建议人工介入 |
 
+## 增强停滞检测
+
+### 问题指纹机制
+
+不仅检测分数变化，还检测问题本质是否改变：
+
+```python
+def generate_issue_fingerprint(issue):
+    """生成问题的唯一指纹"""
+    return f"{issue['type']}:{issue['file']}:{issue.get('line', 'unknown')}"
+
+def detect_stall_by_issues(current_issues, previous_issues_list):
+    """基于问题指纹检测停滞"""
+    current_fingerprints = set(
+        generate_issue_fingerprint(i)
+        for i in current_issues
+        if i['severity'] == 'Critical'
+    )
+
+    # 检查 Critical 问题是否在多轮中持续存在
+    persistent_count = 0
+    for prev_issues in previous_issues_list[-2:]:  # 检查最近2轮
+        prev_fingerprints = set(
+            generate_issue_fingerprint(i)
+            for i in prev_issues
+            if i['severity'] == 'Critical'
+        )
+        if current_fingerprints & prev_fingerprints:  # 有交集
+            persistent_count += 1
+
+    if persistent_count >= 2:
+        return True, "STALLED_CRITICAL", "相同的 Critical 问题持续 3 轮未解决"
+    return False, None, None
+
+def detect_oscillation(scores_history):
+    """检测分数震荡"""
+    if len(scores_history) < 3:
+        return False, None
+
+    recent = scores_history[-3:]
+    max_score = max(recent)
+    min_score = min(recent)
+
+    # 如果最近3轮分数在±3分内波动
+    if max_score - min_score <= 6:
+        # 检查是否有上下波动模式
+        diffs = [recent[i+1] - recent[i] for i in range(len(recent)-1)]
+        if (diffs[0] > 0 and diffs[1] < 0) or (diffs[0] < 0 and diffs[1] > 0):
+            return True, "STALLED_OSCILLATING"
+
+    return False, None
+
+def detect_regression(current_scores, previous_scores):
+    """检测回归"""
+    if not previous_scores:
+        return False, None, None
+
+    regressions = []
+    for dim in ['security', 'quality', 'performance']:
+        current = current_scores.get(dim, 0)
+        previous = previous_scores.get(dim, 0)
+        if current < previous - 10:  # 下降超过10分
+            regressions.append({
+                'dimension': dim,
+                'previous': previous,
+                'current': current,
+                'drop': previous - current
+            })
+
+    if regressions:
+        return True, "STALLED_REGRESSION", regressions
+    return False, None, None
+```
+
+### 停滞类型分类
+
+| 停滞类型 | 触发条件 | 建议行动 |
+|----------|----------|----------|
+| `STALLED_SCORE` | 分数连续2轮提升<5分 | 检查是否需要更多上下文 |
+| `STALLED_CRITICAL` | 同一Critical问题持续3轮 | 人工介入审查该问题 |
+| `STALLED_OSCILLATING` | 分数在±3分内震荡3轮 | 检查反馈是否矛盾 |
+| `STALLED_REGRESSION` | 某维度分数下降>10分 | 回滚到之前版本 |
+
+### 增强的输出格式
+
+```json
+{
+  "progress": {
+    "previous_score": 72,
+    "current_score": 74,
+    "improvement": 2,
+    "trend": "slow_improvement",
+    "stall_warning": true,
+    "stall_type": "STALLED_SCORE",
+    "persistent_issues": ["SEC-001", "SEC-003"],
+    "oscillation_detected": false,
+    "regression_detected": false,
+    "failed_dimensions": ["security"]
+  }
+}
+```
+
+### 综合停滞检测
+
+```python
+def comprehensive_stall_detection(
+    current_score,
+    current_scores,
+    current_issues,
+    previous_scores_list,
+    previous_issues_list,
+    tech_stack
+):
+    """综合停滞检测，返回最严重的停滞类型"""
+    thresholds, _ = get_config(tech_stack)
+
+    # 1. 检查分数停滞
+    score_stalled, score_msg = check_progress(
+        current_score, previous_scores_list, tech_stack
+    )
+    if score_stalled == "STALLED":
+        return "STALLED", "STALLED_SCORE", score_msg
+
+    # 2. 检查 Critical 问题持续
+    issue_stalled, stall_type, issue_msg = detect_stall_by_issues(
+        current_issues, previous_issues_list
+    )
+    if issue_stalled:
+        return "STALLED", stall_type, issue_msg
+
+    # 3. 检查分数震荡
+    all_scores = previous_scores_list + [current_score]
+    oscillating, osc_type = detect_oscillation(all_scores)
+    if oscillating:
+        return "STALLED", osc_type, "分数在多轮之间震荡，建议检查反馈一致性"
+
+    # 4. 检查回归
+    if previous_scores_list:
+        prev_scores_dict = previous_issues_list[-1] if previous_issues_list else {}
+        regressed, reg_type, reg_details = detect_regression(
+            current_scores, prev_scores_dict
+        )
+        if regressed:
+            return "STALLED", reg_type, f"检测到回归: {reg_details}"
+
+    return None, None, None
+```
+
 ## 与 OpenSpec 集成
 
 当在 OpenSpec 上下文中运行时：

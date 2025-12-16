@@ -59,3 +59,80 @@ export {
   extractFrontmatter,
   FRONTMATTER_REGEX,
 } from './utils/yaml-parser.js';
+
+// ============ Phase 1: Schema Validation ============
+export * from './schemas/index.js';
+
+export {
+  safeValidate,
+  parseAndValidate,
+  validateWithDefaults,
+  isValidationSuccess,
+  formatValidationErrors,
+  type ValidationResult,
+  type ValidationError,
+} from './utils/validation.js';
+
+// ============ Phase 2: Observability ============
+export {
+  tracer,
+  createTracer,
+  type Span,
+  type SpanEvent,
+  type ExecutionTrace,
+  type IterationTrace,
+  type IterationScores,
+  type IterationIssueCounts,
+} from './observability/tracer.js';
+
+export {
+  logger,
+  createLogger,
+  type LogLevel,
+  type LogEntry,
+  type LoggerConfig,
+} from './observability/logger.js';
+
+export {
+  metrics,
+  createMetricsCollector,
+  type MetricsSummary,
+  type ExecutionRecord,
+  type ScoreDistribution,
+} from './observability/metrics.js';
+
+// ============ Phase 4: Reliability ============
+export {
+  sanityCheckAggregatorOutput,
+  secondOpinionScore,
+  compareWithSecondOpinion,
+  type SanityCheckResult,
+} from './utils/aggregator-validator.js';
+
+export {
+  withRetry,
+  withFallback,
+  withTimeout,
+  withGracefulDegradation,
+  CircuitBreaker,
+  type RetryConfig,
+  type FallbackConfig,
+  type CircuitBreakerConfig,
+  type CircuitState,
+} from './utils/error-recovery.js';
+
+export {
+  saveCheckpoint,
+  loadCheckpoint,
+  loadLatestCheckpoint,
+  listCheckpoints,
+  deleteCheckpoint,
+  cleanOldCheckpoints,
+  createCheckpoint,
+  updateCheckpointWithIteration,
+  createFileSnapshot,
+  hasFilesChanged,
+  type IterationCheckpoint,
+  type IterationSnapshot,
+  type FileSnapshot,
+} from './utils/checkpoint.js';
