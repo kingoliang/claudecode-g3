@@ -1,11 +1,15 @@
 import chalk from 'chalk';
 import { checkUpgrade, getInstalledVersion, FRAMEWORK_VERSION } from '../utils/templates.js';
 
+export interface StatusOptions {
+  targetDir?: string;
+}
+
 /**
  * Show installed version and check for updates
  */
-export async function status(): Promise<void> {
-  const targetDir = process.cwd();
+export async function status(options: StatusOptions = {}): Promise<void> {
+  const targetDir = options.targetDir || process.cwd();
   const installed = await getInstalledVersion(targetDir);
   const upgradeInfo = await checkUpgrade(targetDir);
 

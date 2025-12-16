@@ -65,7 +65,7 @@ describe('Observability', () => {
       expect(tracer.getCurrentIteration()).toBeNull();
     });
 
-    it('should end trace and return complete data', () => {
+    it('should end trace and return complete data', async () => {
       const traceId = tracer.startTrace('Test requirement');
       tracer.startIteration(1);
       tracer.recordIterationResult({
@@ -74,7 +74,7 @@ describe('Observability', () => {
         recommendation: 'PASS',
       });
 
-      const trace = tracer.endTrace('PASS');
+      const trace = await tracer.endTrace('PASS');
 
       expect(trace).toBeDefined();
       expect(trace?.traceId).toBe(traceId);
@@ -87,11 +87,11 @@ describe('Observability', () => {
       expect(() => tracer.startIteration(1)).toThrow('No active trace');
     });
 
-    it('should report hasActiveTrace correctly', () => {
+    it('should report hasActiveTrace correctly', async () => {
       expect(tracer.hasActiveTrace()).toBe(false);
       tracer.startTrace('Test');
       expect(tracer.hasActiveTrace()).toBe(true);
-      tracer.endTrace('PASS');
+      await tracer.endTrace('PASS');
       expect(tracer.hasActiveTrace()).toBe(false);
     });
   });

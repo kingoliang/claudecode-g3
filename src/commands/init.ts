@@ -70,6 +70,63 @@ export async function init(options: InitOptions = {}): Promise<void> {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.log(chalk.red('Initialization failed:'), message);
+    console.log('');
+
+    // Provide troubleshooting guidance based on error type
+    console.log(chalk.yellow('Troubleshooting:'));
+
+    if (message.includes('Templates directory not found')) {
+      console.log('  The templates directory could not be located.');
+      console.log('');
+      console.log('  Try the following:');
+      console.log('    1. Reinstall the package:');
+      console.log(chalk.gray('       npm uninstall -g helix && npm install -g helix'));
+      console.log('    2. If using npx, clear the cache:');
+      console.log(chalk.gray('       npx clear-npx-cache && npx helix init'));
+      console.log('    3. Verify installation:');
+      console.log(chalk.gray('       npm list -g helix'));
+    } else if (message.includes('EACCES') || message.includes('permission denied') || message.includes('EPERM')) {
+      console.log('  Permission denied while writing files.');
+      console.log('');
+      console.log('  Try the following:');
+      console.log('    1. Check directory permissions:');
+      console.log(chalk.gray(`       ls -la "${targetDir}"`));
+      console.log('    2. Ensure you own the .claude directory:');
+      console.log(chalk.gray(`       sudo chown -R $(whoami) "${targetDir}/.claude"`));
+      console.log('    3. Run from a directory you have write access to');
+    } else if (message.includes('ENOENT')) {
+      console.log('  A required file or directory was not found.');
+      console.log('');
+      console.log('  Try the following:');
+      console.log('    1. Ensure you are in a valid project directory');
+      console.log('    2. Check that the target path exists:');
+      console.log(chalk.gray(`       ls -la "${targetDir}"`));
+    } else if (message.includes('ENOSPC')) {
+      console.log('  Disk space is full.');
+      console.log('');
+      console.log('  Try the following:');
+      console.log('    1. Free up disk space');
+      console.log('    2. Check available space:');
+      console.log(chalk.gray('       df -h'));
+    } else if (message.includes('EEXIST')) {
+      console.log('  Files already exist and could not be overwritten.');
+      console.log('');
+      console.log('  Try the following:');
+      console.log('    1. Use upgrade command instead:');
+      console.log(chalk.gray('       helix upgrade'));
+      console.log('    2. Or manually remove existing files:');
+      console.log(chalk.gray(`       rm -rf "${targetDir}/.claude/agents" "${targetDir}/.claude/commands"`));
+    } else {
+      console.log('  An unexpected error occurred.');
+      console.log('');
+      console.log('  Try the following:');
+      console.log('    1. Check if you have the latest version:');
+      console.log(chalk.gray('       npm install -g helix@latest'));
+      console.log('    2. Report the issue if it persists:');
+      console.log(chalk.gray('       https://github.com/anthropics/helix/issues'));
+    }
+
+    console.log('');
     process.exit(1);
   }
 }

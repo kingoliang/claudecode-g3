@@ -31,7 +31,15 @@ export interface IterationSnapshot {
   timestamp: string;
 }
 
+/**
+ * Current checkpoint format version
+ * Increment when making breaking changes to checkpoint structure
+ */
+export const CHECKPOINT_VERSION = 2;
+
 export interface IterationCheckpoint {
+  /** Checkpoint format version for migration support */
+  version: number;
   traceId: string;
   requirement: string;
   currentIteration: number;
@@ -43,6 +51,59 @@ export interface IterationCheckpoint {
   iterations: IterationSnapshot[];
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * Legacy checkpoint format (version 1, without version field)
+ */
+interface LegacyCheckpointV1 {
+  traceId: string;
+  requirement: string;
+  currentIteration: number;
+  lastSuccessfulIteration: number;
+  techStack: Record<string, unknown>;
+  codeSnapshot: {
+    files: FileSnapshot[];
+  };
+  iterations: IterationSnapshot[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Migrate checkpoint from any version to current version
+ */
+export function migrateCheckpoint(data: unknown): IterationCheckpoint {
+  if (!data || typeof data !== 'object') {
+    throw new Error('Invalid checkpoint data');
+  }
+
+  const checkpoint = data as Record<string, unknown>;
+  const version = typeof checkpoint.version === 'number' ? checkpoint.version : 1;
+
+  switch (version) {
+    case 1:
+      return migrateV1ToV2(checkpoint as unknown as LegacyCheckpointV1);
+    case 2:
+      return checkpoint as unknown as IterationCheckpoint;
+    default:
+      if (version > CHECKPOINT_VERSION) {
+        logger.warn(`Checkpoint version ${version} is newer than supported version ${CHECKPOINT_VERSION}. Some features may not work correctly.`);
+        return checkpoint as unknown as IterationCheckpoint;
+      }
+      throw new Error(`Unknown checkpoint version: ${version}`);
+  }
+}
+
+/**
+ * Migrate from V1 (no version field) to V2
+ */
+function migrateV1ToV2(v1: LegacyCheckpointV1): IterationCheckpoint {
+  logger.debug('Migrating checkpoint from v1 to v2', { traceId: v1.traceId });
+  return {
+    version: CHECKPOINT_VERSION,
+    ...v1,
+  };
 }
 
 const CHECKPOINT_DIR = '.claude/checkpoints';
@@ -111,7 +172,7 @@ export async function saveCheckpoint(
 }
 
 /**
- * Load checkpoint by trace ID
+ * Load checkpoint by trace ID with automatic migration
  */
 export async function loadCheckpoint(
   targetDir: string,
@@ -124,14 +185,27 @@ export async function loadCheckpoint(
   }
 
   try {
-    return await fs.readJson(filepath);
-  } catch {
+    const data = await fs.readJson(filepath);
+    const migrated = migrateCheckpoint(data);
+
+    // If migration occurred, save the migrated version
+    if (!data.version || data.version < CHECKPOINT_VERSION) {
+      await fs.writeJson(filepath, migrated, { spaces: 2 });
+      logger.debug('Saved migrated checkpoint', { traceId, newVersion: CHECKPOINT_VERSION });
+    }
+
+    return migrated;
+  } catch (error) {
+    logger.warn('Failed to load checkpoint', {
+      traceId,
+      error: error instanceof Error ? error.message : String(error)
+    });
     return null;
   }
 }
 
 /**
- * Load the most recent checkpoint
+ * Load the most recent checkpoint with automatic migration
  */
 export async function loadLatestCheckpoint(
   targetDir: string
@@ -159,10 +233,24 @@ export async function loadLatestCheckpoint(
 
   stats.sort((a, b) => b.mtime - a.mtime);
   const latestFile = stats[0].file;
+  const filepath = path.join(checkpointDir, latestFile);
 
   try {
-    return await fs.readJson(path.join(checkpointDir, latestFile));
-  } catch {
+    const data = await fs.readJson(filepath);
+    const migrated = migrateCheckpoint(data);
+
+    // If migration occurred, save the migrated version
+    if (!data.version || data.version < CHECKPOINT_VERSION) {
+      await fs.writeJson(filepath, migrated, { spaces: 2 });
+      logger.debug('Saved migrated checkpoint', { traceId: migrated.traceId, newVersion: CHECKPOINT_VERSION });
+    }
+
+    return migrated;
+  } catch (error) {
+    logger.warn('Failed to load latest checkpoint', {
+      file: latestFile,
+      error: error instanceof Error ? error.message : String(error)
+    });
     return null;
   }
 }
@@ -272,6 +360,7 @@ export function createCheckpoint(
 ): IterationCheckpoint {
   const now = new Date().toISOString();
   return {
+    version: CHECKPOINT_VERSION,
     traceId,
     requirement,
     currentIteration: 0,

@@ -458,4 +458,4 @@ const mockFn = vi.fn()
 
 - **接收自**: `/helix:test`, `/helix:code` 完成后
 - **输出到**: `quality-checker`, CI/CD
-- **协作**: `code-writer`, `frontend-expert`, `backend-expert`
+- **协作**: `code-writer`

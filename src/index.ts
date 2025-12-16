@@ -8,7 +8,7 @@
 // Commands
 export { init, type InitOptions } from './commands/init.js';
 export { upgrade, type UpgradeOptions } from './commands/upgrade.js';
-export { status } from './commands/status.js';
+export { status, type StatusOptions } from './commands/status.js';
 
 // Template management
 export {
@@ -30,7 +30,11 @@ export {
   discoverAgents,
   parseAgentFrontmatter,
   formatAgentNames,
+  AgentFrontmatterSchema,
+  VALID_MODELS,
   type AgentMetadata,
+  type AgentModel,
+  type AgentFrontmatter,
   type DiscoveryResult,
 } from './utils/agent-discovery.js';
 
@@ -83,6 +87,7 @@ export {
   type IterationTrace,
   type IterationScores,
   type IterationIssueCounts,
+  type TracerConfig,
 } from './observability/tracer.js';
 
 export {
@@ -132,6 +137,8 @@ export {
   updateCheckpointWithIteration,
   createFileSnapshot,
   hasFilesChanged,
+  migrateCheckpoint,
+  CHECKPOINT_VERSION,
   type IterationCheckpoint,
   type IterationSnapshot,
   type FileSnapshot,

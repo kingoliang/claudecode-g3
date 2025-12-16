@@ -6,7 +6,7 @@
 
 ### 核心能力
 
-- **多代理协作** - 16 个专业代理协同工作，覆盖从研究到文档的完整开发流程
+- **多代理协作** - 11 个专业代理协同工作，覆盖从研究到文档的完整开发流程
 - **自动化质量检查** - 安全、代码质量、性能审查并行执行
 - **迭代式改进** - 自动迭代直到代码达到质量标准
 - **可配置质量门槛** - 支持 strict/standard/mvp 三种预设，可按项目自定义
@@ -190,13 +190,8 @@ helix upgrade [--force]
 | **研究** | deep-researcher | 自主网络研究、多跳推理、自适应规划 |
 | **设计** | system-architect | 系统架构设计、技术选型、ADR 生成 |
 | **管理** | pm-agent | 模式分析、检查清单、里程碑规划 |
-| **领域** | frontend-expert | UI/UX、响应式设计、前端最佳实践 |
-| | backend-expert | 服务端架构、API 设计、数据库优化 |
-| | testing-specialist | 测试策略、自动化测试、覆盖率规划 |
-| | performance-engineer | 性能优化、基准测试、容量规划 |
-| **专业** | security-engineer | 漏洞评估、安全审计、威胁建模 |
-| | code-analyst | 代码质量分析、复杂度评估、技术债务 |
-| | code-restructuring | 代码重构、架构优化、遗留代码现代化 |
+| **领域** | testing-specialist | 测试策略、自动化测试、覆盖率规划 |
+| **专业** | code-analyst | 代码质量分析、复杂度评估、技术债务 |
 | | knowledge-facilitator | 文档生成、知识转移、最佳实践传播 |
 
 ## 质量标准
@@ -264,7 +259,7 @@ helix/
 │   ├── observability/      # 可观测性基础设施
 │   └── utils/              # 工具模块
 ├── templates/              # 模板文件 (自动发现)
-│   ├── agents/             # 代理定义 (16 个代理)
+│   ├── agents/             # 代理定义 (11 个代理)
 │   │   ├── code-writer.md
 │   │   ├── security-reviewer.md
 │   │   ├── quality-checker.md
@@ -273,13 +268,8 @@ helix/
 │   │   ├── deep-researcher.md
 │   │   ├── system-architect.md
 │   │   ├── pm-agent.md
-│   │   ├── frontend-expert.md
-│   │   ├── backend-expert.md
 │   │   ├── testing-specialist.md
-│   │   ├── performance-engineer.md
-│   │   ├── security-engineer.md
 │   │   ├── code-analyst.md
-│   │   ├── code-restructuring.md
 │   │   └── knowledge-facilitator.md
 │   ├── commands/           # 命令模板
 │   │   ├── stack.md            # 技术栈管理
@@ -425,7 +415,7 @@ import {
 - **可靠性特性** - 聚合器验证、错误恢复、检查点
 - **默认启用 OpenSpec 集成**
 - 重命名为 **Helix**
-- **SuperClaude 整合** - 16 个专业代理、端到端工作流、质量门槛系统
+- **SuperClaude 整合** - 11 个专业代理、端到端工作流、质量门槛系统
 
 ## 许可证
 

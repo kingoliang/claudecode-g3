@@ -57,7 +57,7 @@ description: A test agent
     const { metadata, error } = parseAgentFrontmatter(content, 'test-agent.md');
 
     expect(metadata).toBeNull();
-    expect(error).toContain('Missing required fields');
+    // Zod validation reports each field separately
     expect(error).toContain('version');
     expect(error).toContain('tools');
     expect(error).toContain('model');
@@ -75,7 +75,9 @@ model: opus
     const { metadata, error } = parseAgentFrontmatter(content, 'test-agent.md');
 
     expect(metadata).toBeNull();
-    expect(error).toContain('Invalid version format');
+    // Zod provides a custom error message for version format
+    expect(error).toContain('version');
+    expect(error).toContain('semver');
   });
 
   it('should return error when name does not match filename', () => {
@@ -126,7 +128,7 @@ describe('discoverAgents', () => {
       path.join(tempDir, 'agent-a.md'),
       `---
 name: agent-a
-description: Agent A
+description: Agent A for testing purposes
 version: 1.0.0
 tools: Read
 model: opus
@@ -139,7 +141,7 @@ model: opus
       path.join(tempDir, 'agent-b.md'),
       `---
 name: agent-b
-description: Agent B
+description: Agent B for testing purposes
 version: 2.0.0
 tools: Write, Edit
 model: sonnet
@@ -164,7 +166,7 @@ model: sonnet
       path.join(tempDir, 'valid-agent.md'),
       `---
 name: valid-agent
-description: Valid agent
+description: Valid agent for testing purposes
 version: 1.0.0
 tools: Read
 model: opus
@@ -203,7 +205,7 @@ name: invalid-agent
       path.join(tempDir, 'agent.md'),
       `---
 name: agent
-description: Agent
+description: Agent for testing purposes
 version: 1.0.0
 tools: Read
 model: opus

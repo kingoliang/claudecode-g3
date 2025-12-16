@@ -24,22 +24,42 @@ export type Issue = z.infer<typeof IssueSchema>;
 
 // ============ Tech Stack ============
 
-// Schema with defaults for input validation
-export const QualityThresholdsSchema = z.object({
-  security_min: z.number().min(0).max(100).default(85),
-  quality_min: z.number().min(0).max(100).default(80),
-  performance_min: z.number().min(0).max(100).default(80),
-  overall_min: z.number().min(0).max(100).default(80),
-  max_critical_issues: z.number().min(0).default(0),
-  max_high_issues: z.number().min(0).default(2),
-  max_iterations: z.number().min(1).max(10).default(5),
-  stall_threshold: z.number().min(1).default(5),
-  stall_rounds: z.number().min(1).default(2),
-});
-export type QualityThresholds = z.infer<typeof QualityThresholdsSchema>;
+/**
+ * Default values for quality thresholds
+ */
+export const DEFAULT_QUALITY_THRESHOLDS = {
+  security_min: 85,
+  quality_min: 80,
+  performance_min: 80,
+  overall_min: 80,
+  max_critical_issues: 0,
+  max_high_issues: 2,
+  max_iterations: 5,
+  stall_threshold: 5,
+  stall_rounds: 2,
+} as const;
 
-// Schema without defaults for output types (already validated data)
-export const QualityThresholdsOutputSchema = z.object({
+/**
+ * Default values for weights
+ */
+export const DEFAULT_WEIGHTS = {
+  security: 0.4,
+  quality: 0.35,
+  performance: 0.25,
+} as const;
+
+/**
+ * Weights validation refinement - ensures weights sum to 1.0
+ */
+const weightsRefinement = (data: { security: number; quality: number; performance: number }) => {
+  const sum = data.security + data.quality + data.performance;
+  return Math.abs(sum - 1.0) < 0.001;
+};
+
+/**
+ * Base schema for quality thresholds (no defaults - used for output/strict validation)
+ */
+const BaseQualityThresholdsSchema = z.object({
   security_min: z.number().min(0).max(100),
   quality_min: z.number().min(0).max(100),
   performance_min: z.number().min(0).max(100),
@@ -51,35 +71,47 @@ export const QualityThresholdsOutputSchema = z.object({
   stall_rounds: z.number().min(1),
 });
 
+/**
+ * Base schema for weights (no defaults - used for output/strict validation)
+ */
+const BaseWeightsSchema = z.object({
+  security: z.number().min(0).max(1),
+  quality: z.number().min(0).max(1),
+  performance: z.number().min(0).max(1),
+});
+
+// Schema with defaults for input validation
+export const QualityThresholdsSchema = z.object({
+  security_min: z.number().min(0).max(100).default(DEFAULT_QUALITY_THRESHOLDS.security_min),
+  quality_min: z.number().min(0).max(100).default(DEFAULT_QUALITY_THRESHOLDS.quality_min),
+  performance_min: z.number().min(0).max(100).default(DEFAULT_QUALITY_THRESHOLDS.performance_min),
+  overall_min: z.number().min(0).max(100).default(DEFAULT_QUALITY_THRESHOLDS.overall_min),
+  max_critical_issues: z.number().min(0).default(DEFAULT_QUALITY_THRESHOLDS.max_critical_issues),
+  max_high_issues: z.number().min(0).default(DEFAULT_QUALITY_THRESHOLDS.max_high_issues),
+  max_iterations: z.number().min(1).max(10).default(DEFAULT_QUALITY_THRESHOLDS.max_iterations),
+  stall_threshold: z.number().min(1).default(DEFAULT_QUALITY_THRESHOLDS.stall_threshold),
+  stall_rounds: z.number().min(1).default(DEFAULT_QUALITY_THRESHOLDS.stall_rounds),
+});
+export type QualityThresholds = z.infer<typeof QualityThresholdsSchema>;
+
+// Schema without defaults for output types (reuses base schema)
+export const QualityThresholdsOutputSchema = BaseQualityThresholdsSchema;
+export type QualityThresholdsOutput = z.infer<typeof QualityThresholdsOutputSchema>;
+
 export const WeightsSchema = z
   .object({
-    security: z.number().min(0).max(1).default(0.4),
-    quality: z.number().min(0).max(1).default(0.35),
-    performance: z.number().min(0).max(1).default(0.25),
+    security: z.number().min(0).max(1).default(DEFAULT_WEIGHTS.security),
+    quality: z.number().min(0).max(1).default(DEFAULT_WEIGHTS.quality),
+    performance: z.number().min(0).max(1).default(DEFAULT_WEIGHTS.performance),
   })
-  .refine(
-    (data) => {
-      const sum = data.security + data.quality + data.performance;
-      return Math.abs(sum - 1.0) < 0.001;
-    },
-    { message: 'Weights must sum to 1.0' }
-  );
+  .refine(weightsRefinement, { message: 'Weights must sum to 1.0' });
 export type Weights = z.infer<typeof WeightsSchema>;
 
-// Schema without defaults for output types (already validated data)
-export const WeightsOutputSchema = z
-  .object({
-    security: z.number().min(0).max(1),
-    quality: z.number().min(0).max(1),
-    performance: z.number().min(0).max(1),
-  })
-  .refine(
-    (data) => {
-      const sum = data.security + data.quality + data.performance;
-      return Math.abs(sum - 1.0) < 0.001;
-    },
-    { message: 'Weights must sum to 1.0' }
-  );
+// Schema without defaults for output types (reuses base schema with refinement)
+export const WeightsOutputSchema = BaseWeightsSchema.refine(weightsRefinement, {
+  message: 'Weights must sum to 1.0',
+});
+export type WeightsOutput = z.infer<typeof WeightsOutputSchema>;
 
 export const TechStackSchema = z.object({
   language: z.string(),

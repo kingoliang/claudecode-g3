@@ -364,5 +364,5 @@ const calculateHotspotScore = (file: FileMetrics): number => {
 ## 与其他代理协作
 
 - **接收自**: `/helix:analyze`, `quality-checker`
-- **输出到**: 分析报告, `code-restructuring`
+- **输出到**: 分析报告, `code-writer`
 - **协作**: `pm-agent` (技术债务追踪)

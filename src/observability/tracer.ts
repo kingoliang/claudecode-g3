@@ -3,6 +3,8 @@
  * Provides distributed tracing capabilities for debugging and monitoring
  */
 import { randomUUID } from 'crypto';
+import fs from 'fs-extra';
+import path from 'path';
 
 export interface SpanEvent {
   timestamp: number;
@@ -58,10 +60,46 @@ export interface ExecutionTrace {
   totalDurationMs?: number;
 }
 
+/**
+ * Configuration for trace persistence
+ */
+export interface TracerConfig {
+  /** Enable persistence of traces to disk */
+  persist?: boolean;
+  /** Directory to save traces (relative to target directory) */
+  persistDir?: string;
+  /** Target directory (defaults to cwd) */
+  targetDir?: string;
+  /** Maximum number of trace files to keep */
+  maxTraceFiles?: number;
+}
+
+const DEFAULT_TRACER_CONFIG: TracerConfig = {
+  persist: false,
+  persistDir: '.claude/traces',
+  targetDir: process.cwd(),
+  maxTraceFiles: 20,
+};
+
 class Tracer {
   private currentTrace: ExecutionTrace | null = null;
   private currentIteration: IterationTrace | null = null;
   private spanStack: Span[] = [];
+  private config: TracerConfig = { ...DEFAULT_TRACER_CONFIG };
+
+  /**
+   * Configure the tracer
+   */
+  configure(config: Partial<TracerConfig>): void {
+    this.config = { ...this.config, ...config };
+  }
+
+  /**
+   * Get current configuration
+   */
+  getConfig(): TracerConfig {
+    return { ...this.config };
+  }
 
   /**
    * Start a new execution trace
@@ -179,10 +217,11 @@ class Tracer {
 
   /**
    * End the trace and return complete data
+   * If persistence is enabled, saves the trace to disk
    */
-  endTrace(
+  async endTrace(
     finalResult: ExecutionTrace['finalResult']
-  ): ExecutionTrace | null {
+  ): Promise<ExecutionTrace | null> {
     if (!this.currentTrace) return null;
 
     this.currentTrace.endTime = Date.now();
@@ -195,7 +234,137 @@ class Tracer {
     this.currentIteration = null;
     this.spanStack = [];
 
+    // Persist trace if enabled
+    if (this.config.persist) {
+      await this.persistTrace(trace);
+    }
+
     return trace;
+  }
+
+  /**
+   * Persist trace to disk
+   */
+  private async persistTrace(trace: ExecutionTrace): Promise<void> {
+    try {
+      const traceDir = path.join(
+        this.config.targetDir || process.cwd(),
+        this.config.persistDir || '.claude/traces'
+      );
+
+      await fs.ensureDir(traceDir);
+
+      const filename = `${trace.traceId}.json`;
+      const filepath = path.join(traceDir, filename);
+
+      await fs.writeJson(filepath, trace, { spaces: 2 });
+
+      // Clean up old traces if needed
+      await this.cleanupOldTraces(traceDir);
+    } catch (error) {
+      // Don't throw - persistence failure shouldn't break the workflow
+      console.warn('Failed to persist trace:', error instanceof Error ? error.message : error);
+    }
+  }
+
+  /**
+   * Clean up old trace files, keeping only the most recent N
+   */
+  private async cleanupOldTraces(traceDir: string): Promise<void> {
+    const maxFiles = this.config.maxTraceFiles || 20;
+
+    try {
+      const files = await fs.readdir(traceDir);
+      const jsonFiles = files.filter(f => f.endsWith('.json'));
+
+      if (jsonFiles.length <= maxFiles) {
+        return;
+      }
+
+      // Sort by modification time
+      const stats = await Promise.all(
+        jsonFiles.map(async f => ({
+          file: f,
+          mtime: (await fs.stat(path.join(traceDir, f))).mtime.getTime(),
+        }))
+      );
+
+      stats.sort((a, b) => b.mtime - a.mtime);
+
+      // Remove oldest files
+      const toDelete = stats.slice(maxFiles);
+      for (const { file } of toDelete) {
+        await fs.remove(path.join(traceDir, file));
+      }
+    } catch {
+      // Ignore cleanup errors
+    }
+  }
+
+  /**
+   * Load a trace from disk by ID
+   */
+  async loadTrace(traceId: string): Promise<ExecutionTrace | null> {
+    const traceDir = path.join(
+      this.config.targetDir || process.cwd(),
+      this.config.persistDir || '.claude/traces'
+    );
+
+    const filepath = path.join(traceDir, `${traceId}.json`);
+
+    if (!(await fs.pathExists(filepath))) {
+      return null;
+    }
+
+    try {
+      return await fs.readJson(filepath);
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * List all persisted traces
+   */
+  async listTraces(): Promise<Array<{
+    traceId: string;
+    requirement: string;
+    finalResult?: string;
+    startTime: number;
+    totalDurationMs?: number;
+  }>> {
+    const traceDir = path.join(
+      this.config.targetDir || process.cwd(),
+      this.config.persistDir || '.claude/traces'
+    );
+
+    if (!(await fs.pathExists(traceDir))) {
+      return [];
+    }
+
+    const files = await fs.readdir(traceDir);
+    const jsonFiles = files.filter(f => f.endsWith('.json'));
+
+    const traces = await Promise.all(
+      jsonFiles.map(async f => {
+        try {
+          const data = await fs.readJson(path.join(traceDir, f));
+          return {
+            traceId: data.traceId,
+            requirement: data.requirement?.slice(0, 100) ?? '',
+            finalResult: data.finalResult,
+            startTime: data.startTime,
+            totalDurationMs: data.totalDurationMs,
+          };
+        } catch {
+          return null;
+        }
+      })
+    );
+
+    return traces
+      .filter((t): t is NonNullable<typeof t> => t !== null)
+      .sort((a, b) => b.startTime - a.startTime);
   }
 
   /**

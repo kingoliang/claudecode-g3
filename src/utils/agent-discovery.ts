@@ -1,5 +1,6 @@
 import fs from 'fs-extra';
 import path from 'path';
+import { z } from 'zod';
 import { parseSimpleYaml, extractFrontmatter } from './yaml-parser.js';
 
 /**
@@ -63,12 +64,28 @@ export interface GroupedAgents {
 }
 
 /**
- * Required fields in agent frontmatter
+ * Valid Claude models for agents
  */
-const REQUIRED_FIELDS = ['name', 'description', 'version', 'tools', 'model'] as const;
+export const VALID_MODELS = ['opus', 'sonnet', 'haiku'] as const;
+export type AgentModel = typeof VALID_MODELS[number];
 
 /**
- * Parse agent frontmatter from markdown content
+ * Zod schema for agent frontmatter validation
+ */
+export const AgentFrontmatterSchema = z.object({
+  name: z.string().min(1, 'Agent name is required').regex(/^[a-z0-9-]+$/, 'Agent name must be lowercase alphanumeric with hyphens'),
+  description: z.string().min(10, 'Description must be at least 10 characters'),
+  version: z.string().regex(/^\d+\.\d+\.\d+/, 'Version must be in semver format (e.g., 1.0.0)'),
+  tools: z.string().min(1, 'At least one tool must be specified'),
+  model: z.enum(VALID_MODELS, { errorMap: () => ({ message: `Model must be one of: ${VALID_MODELS.join(', ')}` }) }),
+  category: z.enum(['core', 'research', 'design', 'management', 'domain', 'specialized']).optional(),
+  source: z.enum(['helix', 'superclaude']).optional(),
+});
+
+export type AgentFrontmatter = z.infer<typeof AgentFrontmatterSchema>;
+
+/**
+ * Parse agent frontmatter from markdown content with Zod validation
  * @param content - Full markdown file content
  * @param fileName - Original file name for error reporting
  * @returns AgentMetadata if valid, null if parsing fails
@@ -85,59 +102,44 @@ export function parseAgentFrontmatter(
 
   const parsed = parseSimpleYaml(yamlContent);
 
-  // Validate required fields
-  const missingFields: string[] = [];
-  for (const field of REQUIRED_FIELDS) {
-    if (!parsed[field]) {
-      missingFields.push(field);
-    }
-  }
+  // Validate with Zod schema
+  const validation = AgentFrontmatterSchema.safeParse(parsed);
 
-  if (missingFields.length > 0) {
+  if (!validation.success) {
+    const errors = validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`);
     return {
       metadata: null,
-      error: `Missing required fields: ${missingFields.join(', ')}`
+      error: errors.join('; ')
+    };
+  }
+
+  const data = validation.data;
+
+  // Validate name matches filename (without extension)
+  const expectedName = path.basename(fileName, '.md');
+  if (data.name !== expectedName) {
+    return {
+      metadata: null,
+      error: `Name mismatch: frontmatter name '${data.name}' does not match filename '${expectedName}'`
     };
   }
 
   // Parse tools string into array
-  const tools = parsed.tools
+  const tools = data.tools
     .split(',')
     .map(t => t.trim())
     .filter(t => t.length > 0);
 
-  // Validate version format (basic semver check)
-  const versionRegex = /^\d+\.\d+\.\d+/;
-  if (!versionRegex.test(parsed.version)) {
-    return {
-      metadata: null,
-      error: `Invalid version format: ${parsed.version}`
-    };
-  }
-
-  // Validate name matches filename (without extension)
-  const expectedName = path.basename(fileName, '.md');
-  if (parsed.name !== expectedName) {
-    return {
-      metadata: null,
-      error: `Name mismatch: frontmatter name '${parsed.name}' does not match filename '${expectedName}'`
-    };
-  }
-
-  // Parse optional category and source
-  const category = parsed.category as AgentCategory | undefined;
-  const source = parsed.source as AgentSource | undefined;
-
   return {
     metadata: {
-      name: parsed.name,
-      description: parsed.description,
-      version: parsed.version,
+      name: data.name,
+      description: data.description,
+      version: data.version,
       tools,
-      model: parsed.model,
+      model: data.model,
       fileName,
-      category: category || inferCategory(parsed.name),
-      source: source || 'helix',
+      category: data.category || inferCategory(data.name),
+      source: data.source || 'helix',
     },
     error: null
   };
@@ -168,7 +170,7 @@ function inferCategory(name: string): AgentCategory {
   }
 
   // Domain experts
-  if (['frontend-expert', 'backend-expert', 'testing-specialist'].includes(name)) {
+  if (['testing-specialist'].includes(name)) {
     return 'domain';
   }
 

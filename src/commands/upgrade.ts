@@ -80,6 +80,48 @@ export async function upgrade(options: UpgradeOptions = {}): Promise<void> {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.log(chalk.red('Upgrade failed:'), message);
+    console.log('');
+
+    // Provide troubleshooting guidance
+    console.log(chalk.yellow('Troubleshooting:'));
+
+    if (message.includes('Templates directory not found')) {
+      console.log('  The templates directory could not be located.');
+      console.log('');
+      console.log('  Try the following:');
+      console.log('    1. Reinstall the package:');
+      console.log(chalk.gray('       npm uninstall -g helix && npm install -g helix'));
+      console.log('    2. Then run init instead:');
+      console.log(chalk.gray('       helix init'));
+    } else if (message.includes('EACCES') || message.includes('permission denied') || message.includes('EPERM')) {
+      console.log('  Permission denied while writing files.');
+      console.log('');
+      console.log('  Try the following:');
+      console.log('    1. Check .claude directory permissions:');
+      console.log(chalk.gray(`       ls -la "${targetDir}/.claude"`));
+      console.log('    2. Fix ownership if needed:');
+      console.log(chalk.gray(`       sudo chown -R $(whoami) "${targetDir}/.claude"`));
+    } else if (message.includes('version')) {
+      console.log('  Version check failed.');
+      console.log('');
+      console.log('  Try the following:');
+      console.log('    1. Force reinstall:');
+      console.log(chalk.gray('       helix upgrade --force'));
+      console.log('    2. Or reinitialize:');
+      console.log(chalk.gray('       helix init'));
+    } else {
+      console.log('  An unexpected error occurred.');
+      console.log('');
+      console.log('  Try the following:');
+      console.log('    1. Force reinstall:');
+      console.log(chalk.gray('       helix upgrade --force'));
+      console.log('    2. Check if you have the latest version:');
+      console.log(chalk.gray('       npm install -g helix@latest'));
+      console.log('    3. Report the issue if it persists:');
+      console.log(chalk.gray('       https://github.com/anthropics/helix/issues'));
+    }
+
+    console.log('');
     process.exit(1);
   }
 }

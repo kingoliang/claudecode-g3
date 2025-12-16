@@ -4,15 +4,26 @@ Iterative multi-agent code generation framework for Claude Code. Automatically g
 
 ## Features
 
-- **Multi-Agent Collaboration** - 5 specialized agents working together for comprehensive code generation and quality assurance
+### Core Capabilities
+
+- **Multi-Agent Collaboration** - 11 specialized agents working together, covering the complete development workflow from research to documentation
 - **Automated Quality Checks** - Security, code quality, and performance reviews run in parallel
 - **Iterative Improvement** - Automatic iteration cycles until code meets quality standards
-- **Configurable Quality Thresholds** - Customize scoring thresholds and weights per project
+- **Configurable Quality Thresholds** - Supports strict/standard/mvp presets, customizable per project
+
+### Tech Stack Support
+
 - **Tech Stack Awareness** - Automatic detection with caching, supports multi-language and monorepo projects
-- **Version Management** - Semantic versioning with `helix status` and `upgrade` commands
 - **Cross-Platform Support** - Works on macOS, Linux, and Windows
-- **OpenSpec Integration** - Enabled by default, seamless integration with OpenSpec specification management
+
+### Workflow Management
+
+- **End-to-End Workflow** - `/helix:full-cycle` for complete flow from requirements to documentation
 - **Cross-Session Recovery** - Resume interrupted work from previous state
+- **OpenSpec Integration** - Enabled by default, seamless integration with OpenSpec specification management
+
+### Infrastructure
+
 - **Dynamic Discovery** - Agents, commands, and skills are auto-discovered from templates
 - **Type-Safe Schemas** - Zod-based validation for all agent communication
 - **Observability** - Built-in tracing, structured logging, and metrics collection
@@ -58,11 +69,13 @@ helix upgrade [--force]
 
 ## Architecture
 
+### Workflow Architecture
+
 ```
 User Requirement
     ↓
 ┌─────────────────┐
-│   /tech-stack   │  ← Load or detect tech stack (.claude/tech-stack.json)
+│  /helix:stack   │  ← Load or detect tech stack (.claude/tech-stack.json)
 └────────┬────────┘
          ↓
 ┌─────────────────┐
@@ -88,17 +101,108 @@ User Requirement
     Feedback to code-writer (loop, max 5 rounds)
 ```
 
+### End-to-End Workflow
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    /helix:full-cycle                         │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Stage 1: RESEARCH (optional)                               │
+│  ├── /helix:research --depth <depth>                       │
+│  └── Output: Technical research report                      │
+│       ↓                                                     │
+│  Stage 2: DESIGN                                            │
+│  ├── /helix:design --scope full                            │
+│  └── Output: Architecture design docs, ADR                  │
+│       ↓                                                     │
+│  Stage 3: CODE                                              │
+│  ├── /helix:code --quality-gate <level>                    │
+│  └── Output: Quality-compliant code                         │
+│       ↓ (iterate until pass)                                │
+│  Stage 4: TEST (optional)                                   │
+│  ├── /helix:test --coverage <number>                       │
+│  └── Output: Test suite                                     │
+│       ↓                                                     │
+│  Stage 5: DOCUMENT (optional)                               │
+│  ├── /helix:document --type all                            │
+│  └── Output: API docs, README                               │
+│       ↓                                                     │
+│  ✓ Complete                                                 │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Commands
+
+### Core Commands
+
+| Command | Description | Alias |
+|---------|-------------|-------|
+| `/helix:stack` | Tech stack detection and configuration | tech-stack |
+| `/helix:code` | Iterative code generation (with quality gate) | iterative-code |
+| `/helix:apply` | OpenSpec integration implementation | os-apply-iterative |
+
+### Extended Commands
+
+| Command | Description |
+|---------|-------------|
+| `/helix:research` | Deep technical research |
+| `/helix:design` | Architecture design |
+| `/helix:test` | Test generation |
+| `/helix:document` | Documentation generation |
+| `/helix:full-cycle` | End-to-end complete workflow |
+
+### Usage Examples
+
+```bash
+# Tech stack management
+/helix:stack              # View or generate tech stack config
+/helix:stack --refresh    # Force re-detection
+
+# Iterative code generation
+/helix:code Implement user login with password encryption and JWT token generation
+
+# Using quality gates
+/helix:code --quality-gate strict Implement payment processing module
+
+# Deep research
+/helix:research --depth deep JWT authentication best practices
+
+# End-to-end flow
+/helix:full-cycle Implement user authentication system with OAuth and JWT support
+
+# Quick prototype (MVP mode)
+/helix:full-cycle --quality-gate mvp --skip-test Product demo page
+```
+
 ## Agents
 
-| Agent | Responsibility | Tools |
-|-------|----------------|-------|
-| `code-writer` | Write code based on requirements, iterate based on feedback | Read, Edit, Write, Grep, Glob, Bash |
-| `security-reviewer` | Detect OWASP Top 10, auth issues, sensitive data leaks | Read, Grep, Glob |
-| `quality-checker` | Check code standards, maintainability, design patterns | Read, Grep, Glob |
-| `performance-analyzer` | Analyze algorithm complexity, memory usage, query efficiency | Read, Grep, Glob, Bash |
-| `result-aggregator` | Aggregate results, determine pass/fail, generate feedback | Read |
+### Agent Categories
+
+| Category | Agent | Responsibility |
+|----------|-------|----------------|
+| **Core** | code-writer | Write code based on requirements, iterate based on feedback |
+| | security-reviewer | Detect OWASP Top 10, auth issues, sensitive data leaks |
+| | quality-checker | Check code standards, maintainability, design patterns |
+| | performance-analyzer | Analyze algorithm complexity, memory usage, query efficiency |
+| | result-aggregator | Aggregate results, determine pass/fail, generate feedback |
+| **Research** | deep-researcher | Autonomous web research, multi-hop reasoning, adaptive planning |
+| **Design** | system-architect | System architecture design, technology selection, ADR generation |
+| **Management** | pm-agent | Pattern analysis, checklists, milestone planning |
+| **Domain** | testing-specialist | Test strategy, automated testing, coverage planning |
+| **Specialized** | code-analyst | Code quality analysis, complexity assessment, technical debt |
+| | knowledge-facilitator | Documentation generation, knowledge transfer, best practices |
 
 ## Quality Standards
+
+### Quality Gate Presets
+
+| Preset | Min Security | Min Quality | Max High Issues | Use Case |
+|--------|-------------|-------------|-----------------|----------|
+| **strict** | 95 | 90 | 0 | Financial, healthcare systems |
+| **standard** | 85 | 80 | 2 | Normal production systems (default) |
+| **mvp** | 75 | 70 | 5 | Prototypes, demo projects |
 
 ### Default Pass Thresholds
 
@@ -111,9 +215,18 @@ User Requirement
 | Performance Score | ≥ 80/100 | 25% |
 | Overall Score | ≥ 80/100 | - |
 
-### Configurable Thresholds
+### Scoring Formula
 
-Thresholds can be customized in `.claude/tech-stack.json`:
+```
+Security Score = 100 - 25×(Critical) - 15×(High) - 5×(Medium) - 2×(Low)
+Quality Score = 100 - 10×(High) - 5×(Medium) - 2×(Low)
+Performance Score = 100 - 15×(High) - 8×(Medium) - 3×(Low)
+Overall Score = Security×weight + Quality×weight + Performance×weight
+```
+
+### Custom Configuration
+
+Customize thresholds in `.claude/tech-stack.json`:
 
 ```json
 {
@@ -124,9 +237,7 @@ Thresholds can be customized in `.claude/tech-stack.json`:
     "overall_min": 80,
     "max_critical_issues": 0,
     "max_high_issues": 2,
-    "max_iterations": 5,
-    "stall_threshold": 5,
-    "stall_rounds": 2
+    "max_iterations": 5
   },
   "weights": {
     "security": 0.4,
@@ -134,120 +245,6 @@ Thresholds can be customized in `.claude/tech-stack.json`:
     "performance": 0.25
   }
 }
-```
-
-**Preset Templates:**
-
-```json
-// Strict mode (financial/healthcare systems)
-"quality_thresholds": {
-  "security_min": 95,
-  "quality_min": 90,
-  "max_high_issues": 0,
-  "max_iterations": 10
-}
-
-// Relaxed mode (MVP/prototypes)
-"quality_thresholds": {
-  "security_min": 75,
-  "quality_min": 70,
-  "max_high_issues": 5,
-  "max_iterations": 3
-}
-```
-
-### Scoring Formula
-
-```
-Security Score = 100 - 25×(Critical) - 15×(High) - 5×(Medium) - 2×(Low)
-Quality Score = 100 - 10×(High) - 5×(Medium) - 2×(Low)
-Performance Score = 100 - 15×(High) - 8×(Medium) - 3×(Low)
-Overall Score = Security×weight + Quality×weight + Performance×weight
-```
-
-## Usage
-
-### Tech Stack Management
-
-The `/tech-stack` command manages project technology stack configuration:
-
-```bash
-# View or generate tech stack config
-/tech-stack
-
-# Force re-detection (after project upgrades)
-/tech-stack --refresh
-```
-
-Tech stack is cached in `.claude/tech-stack.json`:
-```json
-{
-  "version": "1.0.0",
-  "detected_at": "2025-01-15T14:30:00Z",
-  "source_files": ["package.json", "tsconfig.json"],
-  "language": "TypeScript",
-  "language_version": "5.0",
-  "framework": "Next.js",
-  "framework_version": "14.0.0",
-  "build_tool": "npm",
-  "test_framework": "Jest",
-  "code_style": "ESLint + Prettier",
-  "constraints": ["ESM", "React 18", "Node 18+"],
-  "quality_thresholds": { ... },
-  "weights": { ... }
-}
-```
-
-### Multi-Language / Monorepo Projects
-
-For projects with multiple languages or monorepo structures:
-
-```json
-{
-  "project_type": "multi-language",
-  "primary": {
-    "language": "TypeScript",
-    "framework": "Next.js",
-    "scope": "frontend/*"
-  },
-  "secondary": [
-    {
-      "language": "Java",
-      "framework": "Spring Boot",
-      "scope": "backend/*"
-    },
-    {
-      "language": "Python",
-      "scope": "scripts/*"
-    }
-  ]
-}
-```
-
-Supported monorepo tools: Turborepo, Nx, Lerna, pnpm workspaces, Rush
-
-### Standalone Usage
-
-```bash
-/iterative-code [requirement description]
-```
-
-**Example:**
-```bash
-/iterative-code Implement user login with password encryption and JWT token generation
-```
-
-### With OpenSpec Integration
-
-```bash
-# 1. Initialize OpenSpec (install base commands)
-openspec init
-
-# 2. Create change proposal
-/openspec:proposal "Implement user authentication"
-
-# 3. Use iterative implementation
-/os-apply-iterative [change-id]
 ```
 
 ## Project Structure
@@ -258,56 +255,71 @@ helix/
 │   └── cli.js              # CLI entry point
 ├── src/                    # TypeScript source code
 │   ├── commands/           # CLI commands
-│   │   ├── init.ts         # Initialize framework
-│   │   ├── upgrade.ts      # Upgrade templates
-│   │   └── status.ts       # Show version info
 │   ├── schemas/            # Zod schema definitions
-│   │   └── index.ts        # Type-safe agent communication schemas
 │   ├── observability/      # Observability infrastructure
-│   │   ├── tracer.ts       # Distributed tracing
-│   │   ├── logger.ts       # Structured logging
-│   │   └── metrics.ts      # Metrics collection
-│   ├── utils/              # Utility modules
-│   │   ├── templates.ts    # Template & version management
-│   │   ├── validation.ts   # Schema validation utilities
-│   │   ├── aggregator-validator.ts  # Output sanity checking
-│   │   ├── error-recovery.ts        # Retry, fallback, circuit breaker
-│   │   ├── checkpoint.ts            # State persistence
-│   │   ├── agent-discovery.ts       # Agent metadata parsing
-│   │   ├── command-discovery.ts     # Command metadata parsing
-│   │   ├── skill-discovery.ts       # Skill metadata parsing
-│   │   ├── yaml-parser.ts           # YAML frontmatter parser
-│   │   └── version.ts               # Version constant
-│   └── index.ts            # Public API exports
-├── test/                   # Test suite (Vitest)
-│   ├── schemas.test.ts
-│   ├── validation.test.ts
-│   ├── observability.test.ts
-│   ├── aggregator-validator.test.ts
-│   ├── error-recovery.test.ts
-│   ├── checkpoint.test.ts
-│   ├── templates.test.ts
-│   ├── agent-discovery.test.ts
-│   └── command-discovery.test.ts
+│   └── utils/              # Utility modules
 ├── templates/              # Template files (auto-discovered)
-│   ├── agents/             # Agent definitions (5 agents)
+│   ├── agents/             # Agent definitions (11 agents)
 │   │   ├── code-writer.md
 │   │   ├── security-reviewer.md
 │   │   ├── quality-checker.md
 │   │   ├── performance-analyzer.md
-│   │   └── result-aggregator.md
+│   │   ├── result-aggregator.md
+│   │   ├── deep-researcher.md
+│   │   ├── system-architect.md
+│   │   ├── pm-agent.md
+│   │   ├── testing-specialist.md
+│   │   ├── code-analyst.md
+│   │   └── knowledge-facilitator.md
 │   ├── commands/           # Command templates
-│   │   ├── tech-stack.md       # Tech stack management
-│   │   ├── iterative-code.md   # Standalone iterative code gen
-│   │   └── os-apply-iterative.md  # OpenSpec integration
-│   └── skills/             # Skill definitions
-│       └── helix/
-├── scripts/                # Build scripts
-│   └── inject-version.js   # Version injection at build time
-├── package.json            # Package configuration
-├── tsconfig.json           # TypeScript configuration
-└── vitest.config.ts        # Test configuration
+│   │   ├── stack.md            # Tech stack management
+│   │   ├── code.md             # Iterative code generation
+│   │   ├── apply.md            # OpenSpec integration
+│   │   ├── research.md         # Deep research
+│   │   ├── design.md           # Architecture design
+│   │   ├── test.md             # Test generation
+│   │   ├── document.md         # Documentation generation
+│   │   └── full-cycle.md       # End-to-end workflow
+│   ├── workflows/          # Workflow definitions
+│   │   ├── quality-gate.md     # Quality gate system
+│   │   └── cycle-state.md      # Workflow state management
+│   ├── presets/            # Preset configurations
+│   │   └── quality-presets.md  # Quality presets
+│   └── config/             # Configuration files
+│       └── aliases.md          # Command aliases
+├── test/                   # Test suite (Vitest)
+└── package.json            # Package configuration
 ```
+
+## Check Coverage
+
+### Security Checks
+
+- SQL/NoSQL/Command/LDAP/XPath injection
+- Authentication and authorization flaws
+- Sensitive data exposure (hardcoded credentials, API keys)
+- XSS cross-site scripting
+- Insecure dependencies
+- OWASP Top 10 full coverage
+
+### Code Quality Checks
+
+- Cyclomatic complexity (target < 10)
+- Function length (target < 50 lines)
+- Class length (target < 300 lines)
+- Naming conventions
+- Code duplication
+- Error handling
+- Documentation completeness
+
+### Performance Checks
+
+- Algorithm complexity (Big O notation)
+- N+1 query problems
+- Database indexing
+- Memory leaks
+- I/O bottlenecks
+- Caching opportunities
 
 ## Development
 
@@ -331,33 +343,6 @@ npm run lint
 npm run format
 ```
 
-## Check Coverage
-
-### Security Checks
-- SQL/NoSQL/Command/LDAP/XPath injection
-- Authentication and authorization flaws
-- Sensitive data exposure (hardcoded credentials, API keys)
-- XSS cross-site scripting
-- Insecure dependencies
-- OWASP Top 10 full coverage
-
-### Code Quality Checks
-- Cyclomatic complexity (target < 10)
-- Function length (target < 50 lines)
-- Class length (target < 300 lines)
-- Naming conventions
-- Code duplication
-- Error handling
-- Documentation completeness
-
-### Performance Checks
-- Algorithm complexity (Big O notation)
-- N+1 query problems
-- Database indexing
-- Memory leaks
-- I/O bottlenecks
-- Caching opportunities
-
 ## API
 
 The package exports utilities for programmatic use:
@@ -379,6 +364,8 @@ import {
   discoverAgents,
   discoverCommands,
   discoverSkills,
+  groupAgentsByCategory,
+  filterAgentsBySource,
 
   // Schemas & Validation
   AggregatorOutputSchema,
@@ -399,23 +386,9 @@ import {
 
   // Types
   type AgentMetadata,
-  type CommandMetadata,
-  type SkillMetadata,
-  type UpgradeStatus,
-  type AggregatorOutput,
-  type Weights,
-  type QualityThresholds,
+  type AgentCategory,
+  type AgentSource,
 } from 'helix';
-
-// Example: Check if upgrade is available
-const result = await checkUpgrade('/path/to/project');
-if (result.needsUpgrade) {
-  console.log(`Upgrade available: ${result.currentVersion} → ${result.availableVersion}`);
-  console.log(`Status: ${result.status}`); // 'needs_upgrade' | 'up_to_date' | 'newer_installed'
-}
-
-// Example: Initialize with custom target directory
-await init({ targetDir: '/path/to/project' }); // OpenSpec enabled by default
 ```
 
 ## Requirements
@@ -428,6 +401,7 @@ await init({ targetDir: '/path/to/project' }); // OpenSpec enabled by default
 ## Changelog
 
 ### v1.0.0
+
 - Initial release with multi-agent code generation
 - Semantic version comparison using semver
 - Cross-platform support (macOS, Linux, Windows)
@@ -441,6 +415,7 @@ await init({ targetDir: '/path/to/project' }); // OpenSpec enabled by default
 - **Reliability features** (aggregator validator, error recovery, checkpoints)
 - **OpenSpec integration enabled by default**
 - Renamed to **Helix**
+- **SuperClaude integration** - 11 specialized agents, end-to-end workflows, quality gate system
 
 ## License
 
