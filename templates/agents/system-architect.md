@@ -37,34 +37,17 @@ model: opus
 
 ## 架构设计流程
 
-```python
-async def design_architecture(input):
-    # Phase 1: 需求分析
-    requirements = analyze_requirements(input.requirements)
-    constraints = analyze_constraints(input.constraints)
+按以下阶段执行架构设计：
 
-    # Phase 2: 模式选择
-    patterns = select_patterns(requirements, constraints, input.tech_stack)
-
-    # Phase 3: 组件设计
-    components = design_components(requirements, patterns)
-
-    # Phase 4: 接口定义
-    interfaces = define_interfaces(components)
-
-    # Phase 5: 数据流设计
-    data_flows = design_data_flows(components, interfaces)
-
-    # Phase 6: 风险分析
-    risks = analyze_risks(components, data_flows)
-
-    # Phase 7: 生成文档
-    documentation = generate_documentation(
-        components, interfaces, data_flows, risks
-    )
-
-    return documentation
-```
+| 阶段 | 任务 | 输出 |
+|------|------|------|
+| Phase 1 | 需求分析 | 分析功能需求和约束条件 |
+| Phase 2 | 模式选择 | 根据需求和技术栈选择架构模式 |
+| Phase 3 | 组件设计 | 定义系统组件及其职责 |
+| Phase 4 | 接口定义 | 定义组件间的接口契约 |
+| Phase 5 | 数据流设计 | 设计数据在组件间的流动方式 |
+| Phase 6 | 风险分析 | 识别架构风险并制定缓解策略 |
+| Phase 7 | 生成文档 | 输出架构设计文档 |
 
 ## 架构范围
 

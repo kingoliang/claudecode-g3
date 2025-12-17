@@ -146,15 +146,16 @@ namespace: helix
 **代理**: `code-writer`, `security-reviewer`, `quality-checker`, `performance-analyzer`, `result-aggregator`
 
 **迭代逻辑**:
-```
-while (quality_score < threshold && iterations < max_iterations):
-    generate_code()
-    review_results = parallel_review()
-    if review_results.passed:
-        break
-    else:
-        improve_code(review_results.feedback)
-```
+
+循环执行直到满足以下任一条件：
+- 质量评分达标（所有维度通过）
+- 达到最大迭代次数
+
+每轮迭代步骤：
+1. 生成/改进代码
+2. 并行运行 3 个 reviewer
+3. 如果通过则结束循环
+4. 否则根据反馈改进代码
 
 **输出**:
 ```json
@@ -213,7 +214,7 @@ while (quality_score < threshold && iterations < max_iterations):
 - 架构文档归档
 - 变更日志更新
 
-**代理**: `knowledge-facilitator`, `code-analyst`
+**代理**: `knowledge-facilitator`, `quality-checker` (analysis 模式)
 
 **输出**:
 ```json

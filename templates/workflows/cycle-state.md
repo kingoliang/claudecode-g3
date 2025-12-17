@@ -24,198 +24,92 @@ version: 1.0.0
     └── document/
 ```
 
-## 状态 Schema
+## 状态结构
 
-```typescript
-interface CycleState {
-  // 唯一标识
-  id: string;                    // 格式: cycle_<random_id>
-  version: string;               // 状态 schema 版本
+### CycleState 主结构
 
-  // 任务信息
-  task: {
-    description: string;         // 原始需求描述
-    created_at: string;          // ISO 8601 时间戳
-    updated_at: string;
-  };
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `id` | string | 唯一标识，格式: `cycle_<random_id>` |
+| `version` | string | 状态 schema 版本 |
+| `task` | object | 任务信息（description, created_at, updated_at） |
+| `config` | object | 配置（quality_gate, research_depth, coverage_target, skip_stages, max_iterations） |
+| `stages` | object | 各阶段状态（research, design, code, test, document） |
+| `current_stage` | string | 当前执行阶段 |
+| `status` | string | 工作流状态: running / paused / completed / failed |
+| `checkpoints` | object | Git 检查点映射（stage -> git tag） |
+| `metadata` | object | 元数据（started_at, completed_at, total_duration_seconds, failure_reason） |
 
-  // 配置
-  config: {
-    quality_gate: 'strict' | 'standard' | 'mvp';
-    research_depth: 'quick' | 'standard' | 'deep' | 'exhaustive';
-    coverage_target: number;
-    skip_stages: string[];       // 跳过的阶段
-    max_iterations: number;      // 代码迭代最大次数
-  };
+### StageState 阶段状态
 
-  // 阶段状态
-  stages: {
-    research: StageState;
-    design: StageState;
-    code: StageState;
-    test: StageState;
-    document: StageState;
-  };
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `status` | string | pending / running / completed / failed / skipped |
+| `started_at` | string | 开始时间 |
+| `completed_at` | string | 完成时间 |
+| `duration_seconds` | number | 持续时间 |
+| `iterations` | number | 迭代次数（仅用于 code 阶段） |
+| `output_path` | string | 输出文件路径 |
+| `error` | object | 错误信息（message, details, recoverable） |
 
-  // 当前状态
-  current_stage: StageName | null;
-  status: 'running' | 'paused' | 'completed' | 'failed';
+### 阶段名称
 
-  // Git 检查点
-  checkpoints: {
-    [stage: string]: string;     // stage -> git tag
-  };
-
-  // 元数据
-  metadata: {
-    started_at: string;
-    completed_at?: string;
-    total_duration_seconds?: number;
-    failure_reason?: string;
-  };
-}
-
-interface StageState {
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
-  started_at?: string;
-  completed_at?: string;
-  duration_seconds?: number;
-  iterations?: number;           // 仅用于 code 阶段
-  output_path?: string;          // 输出文件路径
-  error?: {
-    message: string;
-    details: any;
-    recoverable: boolean;
-  };
-}
-
-type StageName = 'research' | 'design' | 'code' | 'test' | 'document';
-```
+支持的阶段：`research` | `design` | `code` | `test` | `document`
 
 ## 状态操作
 
 ### 创建新工作流
 
-```typescript
-async function createCycle(task: string, config: CycleConfig): Promise<CycleState> {
-  const id = `cycle_${generateId()}`;
+创建工作流时需执行以下步骤：
 
-  const state: CycleState = {
-    id,
-    version: '1.0.0',
-    task: {
-      description: task,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    config: {
-      quality_gate: config.qualityGate || 'standard',
-      research_depth: config.researchDepth || 'standard',
-      coverage_target: config.coverage || 80,
-      skip_stages: config.skipStages || [],
-      max_iterations: config.maxIterations || 5,
-    },
-    stages: {
-      research: { status: 'pending' },
-      design: { status: 'pending' },
-      code: { status: 'pending' },
-      test: { status: 'pending' },
-      document: { status: 'pending' },
-    },
-    current_stage: null,
-    status: 'running',
-    checkpoints: {},
-    metadata: {
-      started_at: new Date().toISOString(),
-    },
-  };
+1. 生成唯一 ID，格式为 `cycle_<random_id>`
+2. 初始化状态结构，包含任务描述和配置
+3. 所有阶段初始状态设为 `pending`
+4. 工作流状态设为 `running`
+5. 记录开始时间
+6. 保存状态到 `.claude/cycle-state.json`
 
-  await saveState(state);
-  return state;
-}
-```
+**配置默认值**:
+
+| 配置项 | 默认值 |
+|--------|--------|
+| quality_gate | standard |
+| research_depth | standard |
+| coverage_target | 80 |
+| skip_stages | [] |
+| max_iterations | 5 |
 
 ### 更新阶段状态
 
-```typescript
-async function updateStage(
-  cycleId: string,
-  stage: StageName,
-  update: Partial<StageState>
-): Promise<CycleState> {
-  const state = await loadState(cycleId);
+更新阶段状态时需执行以下步骤：
 
-  state.stages[stage] = {
-    ...state.stages[stage],
-    ...update,
-  };
-
-  state.task.updated_at = new Date().toISOString();
-
-  // 如果阶段完成，创建 Git 检查点
-  if (update.status === 'completed') {
-    const tag = await createCheckpoint(cycleId, stage);
-    state.checkpoints[stage] = tag;
-  }
-
-  await saveState(state);
-  return state;
-}
-```
+1. 加载当前工作流状态
+2. 更新指定阶段的状态字段
+3. 更新 `task.updated_at` 时间戳
+4. 如果阶段状态变为 `completed`，自动创建 Git 检查点
+5. 保存更新后的状态
 
 ### 恢复工作流
 
-```typescript
-async function resumeCycle(
-  cycleId: string,
-  fromStage?: StageName
-): Promise<CycleState> {
-  const state = await loadState(cycleId);
+恢复工作流时需执行以下步骤：
 
-  if (fromStage) {
-    // 回滚到指定阶段
-    const checkpoint = state.checkpoints[fromStage];
-    if (checkpoint) {
-      await gitReset(checkpoint);
-    }
-
-    // 重置后续阶段状态
-    const stages: StageName[] = ['research', 'design', 'code', 'test', 'document'];
-    const startIndex = stages.indexOf(fromStage);
-
-    for (let i = startIndex; i < stages.length; i++) {
-      state.stages[stages[i]] = { status: 'pending' };
-    }
-  }
-
-  state.status = 'running';
-  state.current_stage = fromStage || findNextStage(state);
-
-  await saveState(state);
-  return state;
-}
-```
+1. 加载指定 cycleId 的工作流状态
+2. 如果指定了恢复起点阶段：
+   - 回滚到该阶段的 Git 检查点
+   - 重置该阶段及后续所有阶段状态为 `pending`
+3. 将工作流状态设为 `running`
+4. 设置当前阶段为恢复起点或下一个待执行阶段
+5. 保存状态
 
 ### 完成工作流
 
-```typescript
-async function completeCycle(cycleId: string): Promise<CycleState> {
-  const state = await loadState(cycleId);
+完成工作流时需执行以下步骤：
 
-  state.status = 'completed';
-  state.current_stage = null;
-  state.metadata.completed_at = new Date().toISOString();
-  state.metadata.total_duration_seconds = calculateDuration(
-    state.metadata.started_at,
-    state.metadata.completed_at
-  );
-
-  // 移动到历史目录
-  await archiveState(state);
-
-  return state;
-}
-```
+1. 将工作流状态设为 `completed`
+2. 清空当前阶段
+3. 记录完成时间
+4. 计算总持续时间
+5. 将状态文件移动到 `.claude/cycle-history/` 目录归档
 
 ## 跨阶段数据传递
 
@@ -265,143 +159,67 @@ async function completeCycle(cycleId: string): Promise<CycleState> {
 
 ### 读取上游输出
 
-```typescript
-async function getStageOutput(cycleId: string, stage: StageName): Promise<any> {
-  const outputPath = `.claude/cycle-outputs/${cycleId}/${stage}/`;
+各阶段输出文件映射规则：
 
-  switch (stage) {
-    case 'research':
-      return await readJson(`${outputPath}/findings.json`);
-    case 'design':
-      return {
-        architecture: await readJson(`${outputPath}/architecture.json`),
-        components: await readJson(`${outputPath}/components.json`),
-      };
-    case 'code':
-      return {
-        manifest: await readJson(`${outputPath}/manifest.json`),
-        quality: await readJson(`${outputPath}/quality-report.json`),
-      };
-    case 'test':
-      return {
-        manifest: await readJson(`${outputPath}/manifest.json`),
-        coverage: await readJson(`${outputPath}/coverage-report.json`),
-      };
-    case 'document':
-      return await readJson(`${outputPath}/manifest.json`);
-    default:
-      throw new Error(`Unknown stage: ${stage}`);
-  }
-}
-```
+| 阶段 | 读取文件 | 返回内容 |
+|------|----------|----------|
+| research | `findings.json` | 研究发现 |
+| design | `architecture.json`, `components.json` | 架构和组件定义 |
+| code | `manifest.json`, `quality-report.json` | 文件清单和质量报告 |
+| test | `manifest.json`, `coverage-report.json` | 测试清单和覆盖率报告 |
+| document | `manifest.json` | 文档清单 |
+
+读取路径格式：`.claude/cycle-outputs/<cycle_id>/<stage>/`
 
 ## Git 检查点
 
 ### 创建检查点
 
-```typescript
-async function createCheckpoint(cycleId: string, stage: StageName): Promise<string> {
-  const tag = `helix/${cycleId}/${stage}`;
+阶段完成时创建 Git 检查点的步骤：
 
-  // 提交当前更改
-  await exec(`git add -A`);
-  await exec(`git commit -m "Helix: Complete ${stage} stage for ${cycleId}" --allow-empty`);
-
-  // 创建标签
-  await exec(`git tag ${tag}`);
-
-  return tag;
-}
-```
+1. 生成标签名，格式：`helix/<cycle_id>/<stage>`
+2. 暂存所有更改 (`git add -A`)
+3. 提交更改，消息格式：`Helix: Complete <stage> stage for <cycle_id>`
+4. 创建 Git 标签
 
 ### 回滚到检查点
 
-```typescript
-async function rollbackToCheckpoint(tag: string): Promise<void> {
-  // 保存当前未提交的更改
-  await exec(`git stash push -m "helix-rollback-${Date.now()}"`);
+回滚到指定检查点的步骤：
 
-  // 回滚到检查点
-  await exec(`git reset --hard ${tag}`);
-}
-```
+1. 保存当前未提交的更改到 stash，标记为 `helix-rollback-<timestamp>`
+2. 硬重置到指定标签 (`git reset --hard <tag>`)
 
 ### 清理检查点
 
-```typescript
-async function cleanupCheckpoints(cycleId: string): Promise<void> {
-  const tags = await exec(`git tag -l "helix/${cycleId}/*"`);
+清理工作流检查点的步骤：
 
-  for (const tag of tags.split('\n')) {
-    if (tag.trim()) {
-      await exec(`git tag -d ${tag.trim()}`);
-    }
-  }
-}
-```
+1. 列出所有匹配 `helix/<cycle_id>/*` 模式的标签
+2. 逐个删除这些标签
 
 ## 失败恢复
 
 ### 失败处理
 
-```typescript
-async function handleFailure(
-  cycleId: string,
-  stage: StageName,
-  error: Error
-): Promise<CycleState> {
-  const state = await loadState(cycleId);
+阶段失败时的处理步骤：
 
-  state.stages[stage] = {
-    ...state.stages[stage],
-    status: 'failed',
-    error: {
-      message: error.message,
-      details: error.stack,
-      recoverable: isRecoverable(error),
-    },
-  };
-
-  state.status = 'failed';
-  state.metadata.failure_reason = `Stage ${stage} failed: ${error.message}`;
-
-  await saveState(state);
-
-  // 生成恢复建议
-  const recovery = generateRecoverySuggestion(state, stage, error);
-
-  return { ...state, recovery };
-}
-```
+1. 将阶段状态设为 `failed`
+2. 记录错误信息（message, details, recoverable）
+3. 将工作流状态设为 `failed`
+4. 记录失败原因到 `metadata.failure_reason`
+5. 保存状态
+6. 生成恢复建议
 
 ### 恢复建议
 
-```typescript
-function generateRecoverySuggestion(
-  state: CycleState,
-  failedStage: StageName,
-  error: Error
-): RecoverySuggestion {
-  if (failedStage === 'code' && error.message.includes('Quality gate')) {
-    return {
-      command: `/helix:full-cycle --resume-from code --quality-gate mvp "${state.task.description}"`,
-      suggestion: '考虑降低质量门槛或手动修复关键问题后重试',
-    };
-  }
+根据失败场景生成恢复建议：
 
-  if (failedStage === 'test' && error.message.includes('Coverage')) {
-    return {
-      command: `/helix:full-cycle --resume-from test --coverage ${state.config.coverage_target - 10}`,
-      suggestion: '降低覆盖率目标或手动补充测试用例',
-    };
-  }
+| 失败场景 | 恢复建议 |
+|----------|----------|
+| code 阶段 Quality gate 失败 | 降低质量门槛或手动修复关键问题后重试 |
+| test 阶段 Coverage 不足 | 降低覆盖率目标或手动补充测试用例 |
+| 其他失败 | 检查错误详情后重试该阶段 |
 
-  return {
-    command: `/helix:full-cycle --resume-from ${failedStage} "${state.task.description}"`,
-    suggestion: '检查错误详情后重试该阶段',
-  };
-}
-```
+恢复命令格式：`/helix:full-cycle --resume-from <stage> [options] "<task>"`
 
 ## 状态查询
 

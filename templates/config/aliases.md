@@ -33,43 +33,14 @@ version: 1.0.0
 
 ## 别名解析规则
 
-```python
-def resolve_command(input_command):
-    """
-    解析命令别名，返回实际命令文件路径。
+### 解析顺序
 
-    解析顺序：
-    1. 检查是否是 /helix: 前缀命令
-    2. 检查用户自定义别名
-    3. 检查默认别名映射
-    4. 直接查找命令文件
-    """
+按以下优先级解析命令别名：
 
-    # 规范化命令名
-    command = normalize(input_command)
-
-    # 1. /helix: 前缀直接映射
-    if command.startswith('helix:'):
-        base_name = command.replace('helix:', '')
-        return f'templates/commands/{base_name}.md'
-
-    # 2. 检查用户自定义别名
-    user_aliases = load_user_aliases()
-    if command in user_aliases:
-        return resolve_command(user_aliases[command])
-
-    # 3. 检查默认别名映射
-    default_aliases = {
-        'iterative-code': 'helix:code',
-        'tech-stack': 'helix:stack',
-        'os-apply-iterative': 'helix:apply',
-    }
-    if command in default_aliases:
-        return resolve_command(default_aliases[command])
-
-    # 4. 直接查找
-    return f'templates/commands/{command}.md'
-```
+1. **检查 /helix: 前缀命令** - 如果命令以 `helix:` 开头，直接映射到对应的命令模板
+2. **检查用户自定义别名** - 查找 `.claude/config/aliases.json` 中的自定义映射
+3. **检查默认别名映射** - 使用系统内置的向后兼容映射
+4. **直接查找命令文件** - 尝试直接匹配命令名称
 
 ## 用户自定义别名
 

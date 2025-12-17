@@ -33,43 +33,37 @@ argument-hint: <topic> [--depth <level>] [--output <format>] [--save]
 
 ## 执行流程
 
-```python
-def execute_research(topic, flags):
-    # Step 0: 加载上下文
-    context = load_context()
+### Step 0: 加载上下文
 
-    # Step 1: 规划研究
-    plan = create_research_plan(
-        topic=topic,
-        depth=flags.depth or 'standard',
-        context=context,
-        questions=flags.questions
-    )
+加载项目技术栈和已有知识作为研究上下文。
 
-    # Step 2: 调用 deep-researcher 代理
-    result = Task(
-        subagent_type="deep-researcher",
-        prompt=f"""
-            topic: {topic}
-            depth: {plan.depth}
-            strategy: full-research
-            context: {context}
-            specific_questions: {flags.questions}
-        """
-    )
+### Step 1: 规划研究
 
-    # Step 3: 处理输出
-    IF flags.output == 'json':
-        output = format_as_json(result)
-    ELSE:
-        output = format_as_markdown(result)
+根据以下参数创建研究计划：
+- 研究主题
+- 研究深度（默认 `standard`）
+- 项目上下文
+- 具体问题列表
 
-    # Step 4: 保存结果（如果指定）
-    IF flags.save:
-        save_research(topic, result)
+### Step 2: 调用 deep-researcher 代理
 
-    return output
-```
+使用 Task 工具调用 `deep-researcher` 代理，传入：
+- topic: 研究主题
+- depth: 研究深度
+- strategy: full-research
+- context: 项目上下文
+- specific_questions: 具体问题列表
+
+### Step 3: 处理输出
+
+| 输出格式 | 处理方式 |
+|----------|----------|
+| `markdown`（默认） | 格式化为 Markdown 报告 |
+| `json` | 格式化为 JSON 结构 |
+
+### Step 4: 保存结果
+
+如果指定了 `--save` 参数，将研究结果保存到 `.claude/research/{topic-slug}/` 目录
 
 ## 研究结果存储
 

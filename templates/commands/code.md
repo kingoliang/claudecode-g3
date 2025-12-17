@@ -26,92 +26,64 @@ aliases: [iterative-code]
 
 ### Step 0: 配置加载
 
-```python
-# 0.1 技术栈加载
-IF .claude/tech-stack.json 不存在:
-    调用 /helix:stack 命令生成
+1. **技术栈加载**
+   - 检查 `.claude/tech-stack.json` 是否存在
+   - 如果不存在，先调用 `/helix:stack` 命令生成
+   - 读取技术栈配置
 
-tech_stack = 读取 .claude/tech-stack.json
+2. **质量门槛配置**（按优先级）
+   - 如果指定了 `--skip-quality`：跳过质量检查
+   - 如果指定了 `--quality-gate`：加载对应预设 (strict/standard/mvp)
+   - 如果 tech_stack 包含 quality_thresholds：使用该配置
+   - 否则：使用 standard 预设作为默认值
 
-# 0.2 质量门槛配置
-IF flags.skip_quality:
-    quality_gate = None  # 跳过质量检查
-ELIF flags.quality_gate:
-    quality_gate = load_preset(flags.quality_gate)  # strict/standard/mvp
-ELIF tech_stack.quality_thresholds:
-    quality_gate = tech_stack.quality_thresholds
-ELSE:
-    quality_gate = load_preset('standard')  # 默认
-
-# 0.3 应用命令行覆盖
-IF flags.quality_min:
-    quality_gate.overall_min = flags.quality_min
-IF flags.security_min:
-    quality_gate.security_min = flags.security_min
-IF flags.performance_min:
-    quality_gate.performance_min = flags.performance_min
-```
+3. **命令行覆盖**
+   - `--quality-min` 覆盖 `overall_min`
+   - `--security-min` 覆盖 `security_min`
+   - `--performance-min` 覆盖 `performance_min`
 
 ### Step 1-4: 智能迭代循环
 
-```python
-iteration = 0
-failed_dimensions = []
-previous_issues = []
-max_iterations = quality_gate.max_iterations if quality_gate else 5
+**循环条件**: 未通过检查 且 迭代次数 < max_iterations
 
-WHILE (NOT PASS AND iteration < max_iterations):
-    iteration++
+#### Step 1: 调用 code-writer
 
-    # Step 1: 调用 code-writer 生成/改进代码
-    Task(subagent_type="code-writer", prompt="""
-        需求: $ARGUMENTS
-        技术栈: {tech_stack}
-        质量要求: {quality_gate}
-        反馈: {feedback}
-    """)
+使用 Task 工具调用 code-writer agent，传入：
+- 需求描述
+- 技术栈配置
+- 质量要求
+- 上一轮反馈（如果有）
 
-    # Step 2: 智能选择 reviewer (除非 skip_quality)
-    IF quality_gate is None:
-        BREAK  # 跳过质量检查
+#### Step 2: 智能选择 reviewer
 
-    IF iteration == 1 OR len(failed_dimensions) == 0:
-        # 首次迭代：运行全部 reviewer (必须并行)
-        reviewers = ["security-reviewer", "quality-checker", "performance-analyzer"]
-    ELSE:
-        # 后续迭代：只运行失败维度的 reviewer + 随机抽检
-        passed_dimensions = ALL_DIMENSIONS - failed_dimensions
-        spot_check = random_sample(passed_dimensions, 1) if passed_dimensions else []
-        reviewers = failed_dimensions + spot_check
+**如果 skip_quality 为 true**：直接结束，跳过质量检查
 
-    # 并行调用选中的 reviewers (必须在单个消息中)
-    FOR reviewer IN reviewers:
-        Task(subagent_type=reviewer, prompt="...", run_in_parallel=True)
+**首次迭代或无失败维度时**：
+- 运行全部 3 个 reviewer（必须并行）
+- security-reviewer, quality-checker, performance-analyzer
 
-    # Step 3: 调用 result-aggregator 汇总
-    aggregator_result = Task(subagent_type="result-aggregator", prompt="""
-        iteration: {iteration}
-        tech_stack: {tech_stack}
-        quality_gate: {quality_gate}
-        security_result: {security_result}
-        quality_result: {quality_result}
-        performance_result: {performance_result}
-        previous_scores: {previous_scores}
-        previous_issues: {previous_issues}
-    """)
+**后续迭代有失败维度时**：
+- 只运行失败维度的 reviewer
+- 加上随机抽检一个已通过维度（防止回归）
 
-    # Step 4: 更新状态并决策
-    failed_dimensions = get_failed_dimensions(aggregator_result)
-    previous_issues.append(aggregator_result.issues)
+**重要**: 多个 reviewer 必须在单个消息中并行调用
 
-    IF aggregator_result.recommendation == "PASS":
-        BREAK
-    ELIF aggregator_result.recommendation == "STALLED":
-        输出停滞警告，建议人工介入
-        BREAK
-    ELIF aggregator_result.recommendation == "ITERATE":
-        将 feedback_for_code_writer 传给 code-writer
-```
+#### Step 3: 调用 result-aggregator
+
+汇总所有 reviewer 结果，传入：
+- 当前迭代轮次
+- 技术栈配置
+- 质量门槛配置
+- 各 reviewer 的检查结果
+- 历史分数（用于停滞检测）
+
+#### Step 4: 决策与状态更新
+
+根据 aggregator 的 recommendation：
+- **PASS**: 结束循环，输出成功摘要
+- **STALLED**: 结束循环，输出停滞警告，建议人工介入
+- **ITERATE**: 将 feedback_for_code_writer 传给下一轮 code-writer
+- **FAIL_MAX_ITERATIONS**: 结束循环，输出失败摘要
 
 ## 质量门槛预设
 
@@ -121,7 +93,7 @@ WHILE (NOT PASS AND iteration < max_iterations):
 | standard | 85 | 80 | 80 | 80 | 2 |
 | mvp | 75 | 70 | 70 | 70 | 5 |
 
-详细配置参见 `templates/presets/quality-presets.md`。
+详细配置参见 `templates/presets/quality-presets.md`
 
 ## 选择性复检规则
 
@@ -145,74 +117,28 @@ WHILE (NOT PASS AND iteration < max_iterations):
 
 ## 禁止行为
 
-- ❌ 不加载技术栈就开始生成代码
-- ❌ 直接编写代码而不调用 code-writer
-- ❌ 跳过 reviewer 检查（除非使用 --skip-quality）
-- ❌ 首轮不运行全部 reviewer
-- ❌ 每次迭代都重新检测技术栈（应使用缓存）
-- ❌ 忽略停滞警告继续迭代
-- ❌ 忽略 quality_gate 配置中的阈值
-
-## 使用示例
-
-```bash
-# 基本使用（默认 standard 级别）
-/helix:code 实现用户登录 API，支持邮箱密码登录
-
-# 严格模式（金融/医疗场景）
-/helix:code --quality-gate strict 实现支付处理模块
-
-# MVP 模式（快速原型）
-/helix:code --quality-gate mvp 快速实现演示页面
-
-# 自定义安全要求
-/helix:code --security-min 95 实现密码重置功能
-
-# 跳过质量检查（仅限原型）
-/helix:code --skip-quality 实现 UI 原型
-
-# 复杂需求
-/helix:code --quality-gate strict 实现文件上传服务，支持断点续传和并发上传
-
-# 带上下文
-/helix:code 根据 spec.md 中的设计，实现订单处理模块
-```
+- 不加载技术栈就开始生成代码
+- 直接编写代码而不调用 code-writer
+- 跳过 reviewer 检查（除非使用 --skip-quality）
+- 首轮不运行全部 reviewer
+- 每次迭代都重新检测技术栈（应使用缓存）
+- 忽略停滞警告继续迭代
+- 忽略 quality_gate 配置中的阈值
 
 ## 输出格式
 
-迭代完成后，输出以下摘要：
+迭代完成后，输出摘要包含：
 
-```markdown
-## 迭代完成摘要
-
-**最终状态**: PASS / FAIL_MAX_ITERATIONS / STALLED
-**迭代次数**: 3/5
-**质量门槛**: standard (命令行参数)
-
-**最终评分**:
-- 安全: 92/100 (要求: >= 85) ✅
-- 质量: 88/100 (要求: >= 80) ✅
-- 性能: 85/100 (要求: >= 80) ✅
-- 综合: 88.6/100 (要求: >= 80) ✅
-
-**问题统计**:
-- Critical: 0 (上限: 0) ✅
-- High: 1 (上限: 2) ✅
-- Medium: 3
-- Low: 5
-
-**修改文件**:
-- src/controllers/auth.ts
-- src/services/auth.ts
-- src/models/user.ts
-
-**解决的问题**:
-- [SEC-001] SQL 注入风险 → 使用参数化查询
-- [QA-002] 函数过长 → 拆分为多个职责单一的函数
-```
+- **最终状态**: PASS / FAIL_MAX_ITERATIONS / STALLED
+- **迭代次数**: 当前/最大
+- **质量门槛**: 使用的预设或配置来源
+- **最终评分**: 各维度评分及是否达标
+- **问题统计**: 各级别问题数量
+- **修改文件**: 本次迭代修改的文件列表
+- **解决的问题**: 已修复问题的简要说明
 
 ## 向后兼容
 
-此命令是 `/iterative-code` 的升级版本，支持别名：
+此命令支持别名：
 - `/helix:code` (推荐)
 - `/iterative-code` (向后兼容)

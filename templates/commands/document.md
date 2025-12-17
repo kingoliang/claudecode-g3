@@ -3,7 +3,7 @@ name: document
 description: 文档生成命令 - 生成技术文档和 API 文档
 version: 1.0.0
 aliases: []
-agents: [knowledge-facilitator, code-analyst]
+agents: [knowledge-facilitator, quality-checker]
 namespace: helix
 ---
 
@@ -188,7 +188,7 @@ npm start
    ├── 识别 API 端点
    └── 分析代码结构
 
-2. 调用 code-analyst 代理
+2. 调用 quality-checker 代理 (analysis 模式)
    ├── 代码结构分析
    ├── 依赖关系分析
    └── 复杂度评估

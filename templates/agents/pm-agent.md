@@ -36,50 +36,29 @@ model: opus
 
 ## 分析流程
 
-```python
-async def analyze(input):
-    match input.analysis_type:
-        case 'pattern':
-            return extract_patterns(input.context)
-        case 'checklist':
-            return generate_checklist(input.context)
-        case 'retrospective':
-            return conduct_retrospective(input.context)
-        case 'improvement':
-            return suggest_improvements(input.context)
-```
+根据 `analysis_type` 执行对应的分析：
+
+| 分析类型 | 执行操作 |
+|----------|----------|
+| pattern | 提取可复用模式 |
+| checklist | 生成检查清单 |
+| retrospective | 进行回顾分析 |
+| improvement | 提出改进建议 |
 
 ## 模式分析
 
 ### 模式提取流程
 
-```python
-def extract_patterns(context):
-    patterns = []
+执行以下步骤提取模式：
 
-    # 1. 代码模式
-    code_patterns = analyze_code_patterns(context.completed_work)
-
-    # 2. 问题-解决方案模式
-    problem_solution_patterns = extract_problem_solutions(
-        context.issues_found,
-        context.solutions_applied
-    )
-
-    # 3. 决策模式
-    decision_patterns = extract_decision_patterns(context)
-
-    # 4. 分类和评估
-    for pattern in [*code_patterns, *problem_solution_patterns, *decision_patterns]:
-        pattern.frequency = calculate_frequency(pattern)
-        pattern.applicability = assess_applicability(pattern)
-        pattern.confidence = calculate_confidence(pattern)
-
-        if pattern.confidence >= 0.7:
-            patterns.append(pattern)
-
-    return patterns
-```
+1. **分析代码模式**: 从已完成的工作中识别代码层面的模式
+2. **提取问题-解决方案模式**: 从发现的问题和应用的解决方案中提取配对
+3. **提取决策模式**: 识别重复出现的决策场景和选择
+4. **分类和评估**:
+   - 计算每个模式的出现频率
+   - 评估适用性范围
+   - 计算置信度
+   - 只保留置信度 >= 0.7 的模式
 
 ### 模式输出格式
 
@@ -111,32 +90,13 @@ def extract_patterns(context):
 
 ### 生成流程
 
-```python
-def generate_checklist(context):
-    checklist = {
-        "pre_implementation": [],
-        "during_implementation": [],
-        "post_implementation": [],
-        "review": []
-    }
+检查清单分为四个阶段：`pre_implementation`、`during_implementation`、`post_implementation`、`review`
 
-    # 从历史问题生成
-    for issue in context.issues_found:
-        prevention_check = create_prevention_check(issue)
-        checklist[prevention_check.phase].append(prevention_check)
+**生成步骤**：
 
-    # 从最佳实践生成
-    best_practices = get_best_practices(context.tech_stack)
-    for practice in best_practices:
-        practice_check = create_practice_check(practice)
-        checklist[practice_check.phase].append(practice_check)
-
-    # 去重和优先级排序
-    for phase in checklist:
-        checklist[phase] = dedupe_and_prioritize(checklist[phase])
-
-    return checklist
-```
+1. **从历史问题生成预防检查项**: 为每个历史问题创建对应的预防检查，分配到相应阶段
+2. **从最佳实践生成检查项**: 根据技术栈获取最佳实践，转换为检查项
+3. **去重和优先级排序**: 对每个阶段的检查项进行去重并按优先级排序
 
 ### 检查清单输出格式
 
@@ -308,21 +268,14 @@ def generate_checklist(context):
 
 ### 知识更新策略
 
-```python
-def update_knowledge_base(new_pattern):
-    existing = find_similar_pattern(new_pattern)
+更新知识库时遵循以下规则：
 
-    if existing:
-        # 合并模式
-        merged = merge_patterns(existing, new_pattern)
-        merged.frequency += 1
-        merged.confidence = recalculate_confidence(merged)
-        save_pattern(merged)
-    else:
-        # 添加新模式
-        new_pattern.frequency = 1
-        save_pattern(new_pattern)
-```
+| 场景 | 处理方式 |
+|------|----------|
+| 存在相似模式 | 合并模式，频率+1，重新计算置信度 |
+| 不存在相似模式 | 添加新模式，频率设为1 |
+
+**相似度判断**：基于模式类型、触发条件和解决方案的相似性进行匹配
 
 ## 禁止行为
 

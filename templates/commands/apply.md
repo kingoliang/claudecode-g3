@@ -10,6 +10,48 @@ aliases: [os-apply-iterative]
 
 ---
 
+## ⚠️ MANDATORY EXECUTION RULES (必须严格遵守)
+
+**以下规则必须严格执行，不得跳过或简化。违反任何规则视为执行失败。**
+
+### Rule 1: Agent 调用 (MUST)
+
+你**必须**使用 Task tool 调用以下 agents，**禁止**直接编写代码或跳过检查：
+
+```
+代码生成:    Task(subagent_type="code-writer", prompt="...")
+安全检查:    Task(subagent_type="security-reviewer", prompt="...")
+质量检查:    Task(subagent_type="quality-checker", prompt="...")
+性能分析:    Task(subagent_type="performance-analyzer", prompt="...")
+结果聚合:    Task(subagent_type="result-aggregator", prompt="...")
+```
+
+### Rule 2: 技术栈加载 (MUST - 在代码生成前执行)
+
+在调用 code-writer 之前，**必须**先加载项目技术栈。
+
+### Rule 3: 迭代循环 (MUST)
+
+对每个任务，你**必须**执行迭代循环，直到 PASS 或达到最大迭代次数(5轮)。
+3 个 reviewer 必须在**单个消息**中**并行**调用。
+
+### Rule 4: 禁止行为 (FORBIDDEN)
+
+- ❌ **禁止**: 不加载技术栈就开始生成代码
+- ❌ **禁止**: 直接编写代码而不调用 code-writer agent
+- ❌ **禁止**: 跳过任何 reviewer agent 的检查
+- ❌ **禁止**: 不调用 result-aggregator 就判定是否通过
+- ❌ **禁止**: 逐个调用 reviewer agents (必须并行，单个消息 3 个 Task)
+- ❌ **禁止**: 修改代码后不重新运行检查流程
+- ❌ **禁止**: 生成与项目技术栈不兼容的代码
+- ❌ **禁止**: 每次迭代都重新检测技术栈（应使用缓存）
+
+### Rule 5: context.md 生成 (MUST)
+
+会话结束前，你**必须**生成或更新 `openspec/changes/{change-id}/context.md` 文件。
+
+---
+
 ## 命令参数
 
 | 参数 | 说明 | 示例 |
@@ -32,65 +74,55 @@ aliases: [os-apply-iterative]
 
 ## 执行流程
 
-```python
-# Step 0: 加载 OpenSpec 上下文
-change_dir = f'.claude/openspec/changes/{change_id}'
-proposal = read(f'{change_dir}/proposal.md')
-design = read(f'{change_dir}/design.md')
-tasks = read(f'{change_dir}/tasks.md')
+### Step 0: 加载 OpenSpec 上下文
 
-# Step 1: 检查恢复状态
-IF --resume AND exists(f'{change_dir}/context.md'):
-    context = load_context(f'{change_dir}/context.md')
-    start_from_task = context.last_completed_task + 1
-ELSE:
-    start_from_task = 1
+从 `.claude/openspec/changes/{change_id}/` 目录读取：
+- `proposal.md` - 变更提案
+- `design.md` - 详细设计
+- `tasks.md` - 任务分解
 
-# Step 2: 加载技术栈
-IF NOT exists('.claude/tech-stack.json'):
-    execute('/helix:stack')
-tech_stack = read('.claude/tech-stack.json')
+### Step 1: 检查恢复状态
 
-# Step 3: 加载质量门槛
-IF --quality_gate:
-    quality_gate = load_preset(flags.quality_gate)
-ELIF tech_stack.quality_thresholds:
-    quality_gate = tech_stack.quality_thresholds
-ELSE:
-    quality_gate = load_preset('standard')
+| 条件 | 行为 |
+|------|------|
+| 指定 `--resume` 且存在 `context.md` | 从上次完成的任务继续 |
+| 否则 | 从第一个任务开始 |
 
-# Step 4: 执行任务
-FOR task IN tasks[start_from_task:]:
-    # 4.1 调用 code-writer 实现任务
-    code_result = Task(subagent_type="code-writer", prompt=f"""
-        任务: {task}
-        设计文档: {design}
-        技术栈: {tech_stack}
-        质量要求: {quality_gate}
-    """)
+### Step 2: 加载技术栈
 
-    # 4.2 运行质量检查（并行）
-    security_result = Task(subagent_type="security-reviewer", ...)
-    quality_result = Task(subagent_type="quality-checker", ...)
-    performance_result = Task(subagent_type="performance-analyzer", ...)
+- 检查 `.claude/tech-stack.json` 是否存在
+- 不存在则先执行 `/helix:stack` 生成
+- 读取技术栈配置
 
-    # 4.3 汇总结果
-    aggregator_result = Task(subagent_type="result-aggregator", ...)
+### Step 3: 加载质量门槛
 
-    # 4.4 处理结果
-    IF aggregator_result.recommendation == "PASS":
-        mark_task_complete(task)
-        save_context()  # 保存进度
-    ELIF aggregator_result.recommendation == "ITERATE":
-        # 迭代改进直到通过
-        iterate_until_pass(task, quality_gate)
-    ELSE:
-        save_context()  # 保存进度以便恢复
-        raise StalledException()
+按优先级确定质量门槛：
+1. 命令行 `--quality-gate` 参数
+2. tech_stack 中的 quality_thresholds
+3. 默认使用 `standard` 预设
 
-# Step 5: 完成
-update_openspec_status(change_id, 'implemented')
-```
+### Step 4: 执行任务循环
+
+对每个任务执行以下步骤：
+
+| 步骤 | 操作 | Agent |
+|------|------|-------|
+| 4.1 | 实现任务代码 | code-writer |
+| 4.2 | 并行运行质量检查 | security-reviewer, quality-checker, performance-analyzer |
+| 4.3 | 汇总检查结果 | result-aggregator |
+| 4.4 | 根据结果决策 | - |
+
+**结果处理**：
+
+| 推荐值 | 行为 |
+|--------|------|
+| PASS | 标记任务完成，保存进度 |
+| ITERATE | 迭代改进直到通过 |
+| STALLED/FAIL | 保存进度，停止执行 |
+
+### Step 5: 完成
+
+更新 OpenSpec 变更状态为 `implemented`
 
 ## 跨会话恢复
 

@@ -6,7 +6,7 @@ Iterative multi-agent code generation framework for Claude Code. Automatically g
 
 ### Core Capabilities
 
-- **Multi-Agent Collaboration** - 11 specialized agents working together, covering the complete development workflow from research to documentation
+- **Multi-Agent Collaboration** - 10 specialized agents working together, covering the complete development workflow from research to documentation
 - **Automated Quality Checks** - Security, code quality, and performance reviews run in parallel
 - **Iterative Improvement** - Automatic iteration cycles until code meets quality standards
 - **Configurable Quality Thresholds** - Supports strict/standard/mvp presets, customizable per project
@@ -68,6 +68,40 @@ helix upgrade [--force]
 ```
 
 ## Architecture
+
+### System Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  Installation Phase (helix init)                                            │
+│  ┌─────────────────┐    ┌─────────────────────────┐    ┌─────────────────┐  │
+│  │ CLI (Commander) │───→│ Template Discovery      │───→│ .claude/        │  │
+│  │ init/upgrade    │    │ agents/commands/skills  │    │ templates       │  │
+│  └─────────────────┘    └─────────────────────────┘    └─────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+                                    ↓ After installation
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  Runtime Phase (using /helix:code etc. in Claude Code)                      │
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  Iterative Execution Loop                                           │   │
+│  │  ┌──────────┐    ┌──────────────┐    ┌────────────┐                │   │
+│  │  │CodeWriter│───→│ Reviewers ×3 │───→│ Aggregator │                │   │
+│  │  └──────────┘    │  (parallel)  │    └─────┬──────┘                │   │
+│  │       ↑          └──────────────┘          │                       │   │
+│  │       └────────── Feedback Loop ───────────┘                       │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                    ↓                                       │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  Support Layers                                                     │   │
+│  │  ├─ Observability: Logger, Tracer, Metrics                          │   │
+│  │  ├─ Reliability: Retry, CircuitBreaker, Checkpoint                  │   │
+│  │  └─ Validation: Zod Schemas, Aggregator Sanity Check                │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
 
 ### Workflow Architecture
 
@@ -184,14 +218,13 @@ User Requirement
 |----------|-------|----------------|
 | **Core** | code-writer | Write code based on requirements, iterate based on feedback |
 | | security-reviewer | Detect OWASP Top 10, auth issues, sensitive data leaks |
-| | quality-checker | Check code standards, maintainability, design patterns |
+| | quality-checker | Code quality check & analysis (review/analysis dual-mode) |
 | | performance-analyzer | Analyze algorithm complexity, memory usage, query efficiency |
 | | result-aggregator | Aggregate results, determine pass/fail, generate feedback |
 | **Research** | deep-researcher | Autonomous web research, multi-hop reasoning, adaptive planning |
 | **Design** | system-architect | System architecture design, technology selection, ADR generation |
 | **Management** | pm-agent | Pattern analysis, checklists, milestone planning |
 | **Domain** | testing-specialist | Test strategy, automated testing, coverage planning |
-| **Specialized** | code-analyst | Code quality analysis, complexity assessment, technical debt |
 | | knowledge-facilitator | Documentation generation, knowledge transfer, best practices |
 
 ## Quality Standards
@@ -259,17 +292,16 @@ helix/
 │   ├── observability/      # Observability infrastructure
 │   └── utils/              # Utility modules
 ├── templates/              # Template files (auto-discovered)
-│   ├── agents/             # Agent definitions (11 agents)
+│   ├── agents/             # Agent definitions (10 agents)
 │   │   ├── code-writer.md
 │   │   ├── security-reviewer.md
-│   │   ├── quality-checker.md
+│   │   ├── quality-checker.md      # Includes analysis mode (formerly code-analyst)
 │   │   ├── performance-analyzer.md
 │   │   ├── result-aggregator.md
 │   │   ├── deep-researcher.md
 │   │   ├── system-architect.md
 │   │   ├── pm-agent.md
 │   │   ├── testing-specialist.md
-│   │   ├── code-analyst.md
 │   │   └── knowledge-facilitator.md
 │   ├── commands/           # Command templates
 │   │   ├── stack.md            # Tech stack management
@@ -415,7 +447,7 @@ import {
 - **Reliability features** (aggregator validator, error recovery, checkpoints)
 - **OpenSpec integration enabled by default**
 - Renamed to **Helix**
-- **SuperClaude integration** - 11 specialized agents, end-to-end workflows, quality gate system
+- **SuperClaude integration** - 10 specialized agents, end-to-end workflows, quality gate system
 
 ## License
 

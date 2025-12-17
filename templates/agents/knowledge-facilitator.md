@@ -191,28 +191,14 @@ model: opus
 
 ## 文档生成流程
 
-```python
-async def generate_documentation(context):
-    # 1. 分析代码库
-    code_analysis = await analyze_codebase(context.code_base)
+按以下步骤生成文档：
 
-    # 2. 提取信息
-    info = extract_documentation_info(code_analysis)
-
-    # 3. 选择模板
-    template = select_template(context.doc_type, context.audience)
-
-    # 4. 生成文档
-    doc = render_template(template, info)
-
-    # 5. 验证
-    validation = validate_documentation(doc, context)
-
-    # 6. 格式化输出
-    formatted = format_output(doc, context.format)
-
-    return formatted
-```
+1. **分析代码库**: 扫描代码结构、API、类型定义
+2. **提取信息**: 从分析结果中提取文档所需的信息
+3. **选择模板**: 根据文档类型和目标受众选择合适的模板
+4. **生成文档**: 使用模板和提取的信息生成文档
+5. **验证**: 检查链接有效性、代码示例可运行性
+6. **格式化输出**: 按指定格式（markdown/html/pdf）输出
 
 ## 文档质量标准
 

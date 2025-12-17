@@ -78,78 +78,32 @@ version: 1.0.0
 
 ### 质量门槛检查流程
 
-```python
-def apply_quality_gate(flags, tech_stack):
-    """
-    根据命令参数和技术栈配置确定质量门槛。
+按以下优先级确定质量门槛配置：
 
-    优先级：
-    1. 命令行参数 (--quality-min, --security-min 等)
-    2. 命令行预设 (--quality-gate <level>)
-    3. 技术栈配置 (tech_stack.quality_thresholds)
-    4. 默认预设 (standard)
-    """
+1. **命令行参数** - `--quality-min`, `--security-min`, `--performance-min` 直接覆盖对应阈值
+2. **命令行预设** - `--quality-gate <level>` 加载预设配置 (strict/standard/mvp)
+3. **技术栈配置** - 从 `tech_stack.quality_thresholds` 读取项目级配置
+4. **默认预设** - 使用 `standard` 预设作为兜底
 
-    # 检查是否跳过质量检查
-    if flags.get('skip_quality'):
-        return None  # 不应用质量门槛
+如果指定了 `--skip-quality`，则跳过所有质量检查。
 
-    # 加载基础配置
-    if flags.get('quality_gate'):
-        thresholds = load_preset(flags['quality_gate'])
-    elif tech_stack.get('quality_thresholds'):
-        thresholds = tech_stack['quality_thresholds']
-    else:
-        thresholds = load_preset('standard')
+### 评分计算规则
 
-    # 应用命令行覆盖
-    if flags.get('quality_min'):
-        thresholds['overall_min'] = flags['quality_min']
-    if flags.get('security_min'):
-        thresholds['security_min'] = flags['security_min']
-    if flags.get('performance_min'):
-        thresholds['performance_min'] = flags['performance_min']
-
-    return thresholds
+**综合评分公式**:
+```
+综合评分 = 安全评分 × 安全权重 + 质量评分 × 质量权重 + 性能评分 × 性能权重
 ```
 
-### 评分计算
+**通过标准判定** - 必须同时满足以下所有条件：
 
-```python
-def calculate_overall_score(security, quality, performance, weights):
-    """
-    计算加权综合评分。
-
-    公式: overall = security * w_s + quality * w_q + performance * w_p
-    """
-    return (
-        security * weights['security'] +
-        quality * weights['quality'] +
-        performance * weights['performance']
-    )
-
-def check_pass_criteria(scores, issues, thresholds):
-    """
-    检查是否满足通过标准。
-
-    必须同时满足：
-    1. 无 Critical 问题（或符合 max_critical 限制）
-    2. High 问题数 <= max_high
-    3. 各维度评分 >= 对应 min 值
-    4. 综合评分 >= overall_min
-    """
-    critical_count = count_issues_by_severity(issues, 'Critical')
-    high_count = count_issues_by_severity(issues, 'High')
-
-    return (
-        critical_count <= thresholds['max_critical_issues'] and
-        high_count <= thresholds['max_high_issues'] and
-        scores['security'] >= thresholds['security_min'] and
-        scores['quality'] >= thresholds['quality_min'] and
-        scores['performance'] >= thresholds['performance_min'] and
-        scores['overall'] >= thresholds['overall_min']
-    )
-```
+| 条件 | 说明 |
+|------|------|
+| Critical 问题数 ≤ max_critical | 一票否决机制 |
+| High 问题数 ≤ max_high | 高危问题上限 |
+| 安全评分 ≥ security_min | 安全维度达标 |
+| 质量评分 ≥ quality_min | 质量维度达标 |
+| 性能评分 ≥ performance_min | 性能维度达标 |
+| 综合评分 ≥ overall_min | 整体达标 |
 
 ## 与技术栈集成
 

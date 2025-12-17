@@ -6,7 +6,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "iterative-workflow": "./bin/cli.js"
+    "helix": "./bin/cli.js"
   },
   "files": [
     "bin",

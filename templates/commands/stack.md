@@ -20,61 +20,43 @@ aliases: [tech-stack]
 
 ## 执行流程
 
-```python
-# 1. 检查是否需要重新检测
-IF --refresh OR NOT exists('.claude/tech-stack.json'):
-    perform_detection()
-ELSE:
-    load_cached_config()
+### 1. 缓存检查
 
-# 2. 检测逻辑
-def perform_detection():
-    # 扫描项目文件
-    config_files = scan_for_config_files([
-        'package.json',      # Node.js/JavaScript/TypeScript
-        'tsconfig.json',     # TypeScript
-        'pyproject.toml',    # Python
-        'requirements.txt',  # Python
-        'pom.xml',           # Java Maven
-        'build.gradle',      # Java Gradle
-        'go.mod',            # Go
-        'Cargo.toml',        # Rust
-        'composer.json',     # PHP
-        'Gemfile',           # Ruby
-    ])
+| 条件 | 操作 |
+|------|------|
+| 指定 `--refresh` | 强制重新检测 |
+| 不存在 `.claude/tech-stack.json` | 执行检测 |
+| 存在配置文件 | 加载缓存配置 |
 
-    # 检测各项配置
-    language = detect_language(config_files)
-    framework = detect_framework(config_files)
-    build_tool = detect_build_tool(config_files)
-    test_framework = detect_test_framework(config_files)
-    code_style = detect_code_style(config_files)
+### 2. 检测逻辑
 
-    # 检测 monorepo
-    monorepo = detect_monorepo()
+**扫描的配置文件**：
 
-    # 生成配置
-    tech_stack = {
-        'version': '1.0.0',
-        'detected_at': now(),
-        'source_files': config_files,
-        'language': language,
-        'framework': framework,
-        'build_tool': build_tool,
-        'test_framework': test_framework,
-        'code_style': code_style,
-        'monorepo': monorepo,
-        'quality_thresholds': get_default_thresholds(),
-        'weights': get_default_weights()
-    }
+| 文件 | 语言/框架 |
+|------|-----------|
+| `package.json` | Node.js/JavaScript/TypeScript |
+| `tsconfig.json` | TypeScript |
+| `pyproject.toml`, `requirements.txt` | Python |
+| `pom.xml` | Java (Maven) |
+| `build.gradle` | Java (Gradle) |
+| `go.mod` | Go |
+| `Cargo.toml` | Rust |
+| `composer.json` | PHP |
+| `Gemfile` | Ruby |
 
-    # 应用预设（如果指定）
-    IF --preset:
-        tech_stack['quality_thresholds'] = load_preset(--preset)
+**检测步骤**：
 
-    # 写入文件
-    write_json('.claude/tech-stack.json', tech_stack)
-```
+1. 扫描项目根目录识别配置文件
+2. 根据配置文件检测语言
+3. 分析依赖检测框架
+4. 识别构建工具和测试框架
+5. 检测代码风格配置（ESLint、Prettier 等）
+6. 检测是否为 Monorepo 项目
+7. 生成技术栈配置文件
+
+### 3. 预设应用
+
+如果指定了 `--preset` 参数，将对应预设的 `quality_thresholds` 覆盖默认值
 
 ## 支持的语言和框架
 
