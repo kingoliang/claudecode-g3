@@ -1,8 +1,19 @@
 /**
  * Schema definitions for type-safe agent communication
  * Uses Zod for runtime validation
+ *
+ * Default values are imported from constants.ts (single source of truth)
  */
 import { z } from 'zod';
+import {
+  DEFAULT_QUALITY_THRESHOLDS,
+  DEFAULT_WEIGHTS,
+  validateWeightsSum,
+  CONSTANTS_VERSION,
+} from '../constants.js';
+
+// Re-export constants for backward compatibility
+export { DEFAULT_QUALITY_THRESHOLDS, DEFAULT_WEIGHTS, CONSTANTS_VERSION };
 
 // ============ Base Types ============
 
@@ -25,36 +36,10 @@ export type Issue = z.infer<typeof IssueSchema>;
 // ============ Tech Stack ============
 
 /**
- * Default values for quality thresholds
- */
-export const DEFAULT_QUALITY_THRESHOLDS = {
-  security_min: 85,
-  quality_min: 80,
-  performance_min: 80,
-  overall_min: 80,
-  max_critical_issues: 0,
-  max_high_issues: 2,
-  max_iterations: 5,
-  stall_threshold: 5,
-  stall_rounds: 2,
-} as const;
-
-/**
- * Default values for weights
- */
-export const DEFAULT_WEIGHTS = {
-  security: 0.4,
-  quality: 0.35,
-  performance: 0.25,
-} as const;
-
-/**
  * Weights validation refinement - ensures weights sum to 1.0
+ * Uses shared validation function from constants.ts
  */
-const weightsRefinement = (data: { security: number; quality: number; performance: number }) => {
-  const sum = data.security + data.quality + data.performance;
-  return Math.abs(sum - 1.0) < 0.001;
-};
+const weightsRefinement = validateWeightsSum;
 
 /**
  * Base schema for quality thresholds (no defaults - used for output/strict validation)

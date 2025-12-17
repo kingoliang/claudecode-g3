@@ -4,7 +4,21 @@ description: 结果聚合与判定专家。汇总所有检查 Agent 的结果，
 version: 1.0.0
 tools: Read
 model: opus
+constants_version: 1.0.0
 ---
+
+<!--
+  IMPORTANT: Constants Synchronization
+  =====================================
+  The default values in this template MUST match src/constants.ts (CONSTANTS_VERSION: 1.0.0)
+
+  When updating default values:
+  1. Update src/constants.ts first (single source of truth)
+  2. Run `npm test` to verify consistency (test/constants-sync.test.ts)
+  3. Update this template's constants_version in frontmatter
+
+  The test suite validates that template values match code values.
+-->
 
 # 结果聚合与判定专家
 
@@ -183,24 +197,26 @@ model: opus
 ## 判定逻辑（配置化版本）
 
 ```python
-# 默认配置
+# 默认配置 (来源: src/constants.ts v1.0.0)
+# ⚠️ 修改这些值时，必须同步更新 src/constants.ts
 DEFAULT_THRESHOLDS = {
-    "security_min": 85,
-    "quality_min": 80,
-    "performance_min": 80,
-    "overall_min": 80,
-    "max_critical_issues": 0,
-    "max_high_issues": 2,
-    "max_iterations": 5,
-    "stall_threshold": 5,
-    "stall_rounds": 2
+    "security_min": 85,        # 最低安全评分
+    "quality_min": 80,         # 最低质量评分
+    "performance_min": 80,     # 最低性能评分
+    "overall_min": 80,         # 最低综合评分
+    "max_critical_issues": 0,  # Critical问题上限（一票否决）
+    "max_high_issues": 2,      # High问题上限
+    "max_iterations": 5,       # 最大迭代次数
+    "stall_threshold": 5,      # 停滞检测阈值（分数提升低于此值）
+    "stall_rounds": 2          # 连续多少轮低于阈值触发停滞
 }
 
 DEFAULT_WEIGHTS = {
-    "security": 0.4,
-    "quality": 0.35,
-    "performance": 0.25
+    "security": 0.4,           # 安全权重 40%
+    "quality": 0.35,           # 质量权重 35%
+    "performance": 0.25        # 性能权重 25%
 }
+# 注意: weights 三项必须总和为 1.0
 
 def get_config(tech_stack):
     """从 tech_stack 获取配置，未配置则使用默认值"""

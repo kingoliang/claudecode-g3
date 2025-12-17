@@ -1,6 +1,11 @@
 /**
  * Aggregator output validation and sanity checking
  * Provides a second-opinion mechanism for result verification
+ *
+ * Uses shared constants from constants.ts for default values.
+ * This ensures consistency with:
+ * - schemas/index.ts (Zod schema defaults)
+ * - templates/agents/result-aggregator.md (agent instructions)
  */
 import {
   AggregatorOutput,
@@ -9,6 +14,10 @@ import {
   Weights,
 } from '../schemas/index.js';
 import { safeValidate } from './validation.js';
+import {
+  DEFAULT_QUALITY_THRESHOLDS,
+  DEFAULT_WEIGHTS,
+} from '../constants.js';
 
 export interface SanityCheckResult {
   valid: boolean;
@@ -42,11 +51,11 @@ export function sanityCheckAggregatorOutput(output: unknown): SanityCheckResult 
   // 2. Logical consistency checks
 
   // 2.1 Score and pass status consistency
-  const defaultWeights = { security: 0.4, quality: 0.35, performance: 0.25 };
+  // Use shared constants for default weights
   const weights = {
-    security: data.weights_used?.security ?? defaultWeights.security,
-    quality: data.weights_used?.quality ?? defaultWeights.quality,
-    performance: data.weights_used?.performance ?? defaultWeights.performance,
+    security: data.weights_used?.security ?? DEFAULT_WEIGHTS.security,
+    quality: data.weights_used?.quality ?? DEFAULT_WEIGHTS.quality,
+    performance: data.weights_used?.performance ?? DEFAULT_WEIGHTS.performance,
   };
   const calculatedOverall =
     data.scores.security * weights.security +
@@ -180,21 +189,21 @@ export function secondOpinionScore(
     highCheck: boolean;
   };
 } {
-  // Default thresholds
+  // Use shared constants for default thresholds
   const t = {
-    security_min: thresholds?.security_min ?? 85,
-    quality_min: thresholds?.quality_min ?? 80,
-    performance_min: thresholds?.performance_min ?? 80,
-    overall_min: thresholds?.overall_min ?? 80,
-    max_critical_issues: thresholds?.max_critical_issues ?? 0,
-    max_high_issues: thresholds?.max_high_issues ?? 2,
+    security_min: thresholds?.security_min ?? DEFAULT_QUALITY_THRESHOLDS.security_min,
+    quality_min: thresholds?.quality_min ?? DEFAULT_QUALITY_THRESHOLDS.quality_min,
+    performance_min: thresholds?.performance_min ?? DEFAULT_QUALITY_THRESHOLDS.performance_min,
+    overall_min: thresholds?.overall_min ?? DEFAULT_QUALITY_THRESHOLDS.overall_min,
+    max_critical_issues: thresholds?.max_critical_issues ?? DEFAULT_QUALITY_THRESHOLDS.max_critical_issues,
+    max_high_issues: thresholds?.max_high_issues ?? DEFAULT_QUALITY_THRESHOLDS.max_high_issues,
   };
 
-  // Default weights
+  // Use shared constants for default weights
   const w = {
-    security: weights?.security ?? 0.4,
-    quality: weights?.quality ?? 0.35,
-    performance: weights?.performance ?? 0.25,
+    security: weights?.security ?? DEFAULT_WEIGHTS.security,
+    quality: weights?.quality ?? DEFAULT_WEIGHTS.quality,
+    performance: weights?.performance ?? DEFAULT_WEIGHTS.performance,
   };
 
   // Hard veto conditions

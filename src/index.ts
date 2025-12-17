@@ -64,6 +64,20 @@ export {
   FRONTMATTER_REGEX,
 } from './utils/yaml-parser.js';
 
+// ============ Shared Constants (Single Source of Truth) ============
+export {
+  CONSTANTS_VERSION,
+  DEFAULT_QUALITY_THRESHOLDS,
+  DEFAULT_WEIGHTS,
+  STALL_DETECTION,
+  validateWeightsSum,
+  generateThresholdsMarkdownTable,
+  generatePythonStyleDefaults,
+  type QualityThresholdKeys,
+  type WeightKeys,
+  type StallDetectionKeys,
+} from './constants.js';
+
 // ============ Phase 1: Schema Validation ============
 export * from './schemas/index.js';
 
